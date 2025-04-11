@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Melodi - Your Musical Journey of Self-Discovery
+
+Melodi is a web application that analyzes your Spotify listening history to help you understand your emotional patterns through music. It provides personalized AI conversations and journal entries based on your musical preferences and listening habits.
+
+## Features
+
+- Spotify integration for music history analysis
+- Mood detection based on music metadata (tempo, key, genre)
+- AI-powered empathetic conversations about your musical choices
+- Weekly journal entries reflecting your emotional journey
+- Beautiful visualizations of your mood trends
+
+## Tech Stack
+
+- Frontend: Next.js 14 with TypeScript
+- Styling: Tailwind CSS
+- Authentication: NextAuth.js with Spotify OAuth
+- AI: DeepSeek AI for conversations
+- Database: PostgreSQL with Prisma ORM
+- Charts: Chart.js
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```bash
+   git clone https://github.com/yourusername/melodi.git
+   cd melodi
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Set up environment variables:
+   - Copy `.env.local.example` to `.env.local`
+   - Fill in your Spotify API credentials
+   - Add your DeepSeek AI API key
+   - Configure PostgreSQL connection string
 
-## Learn More
+4. Create a Spotify Developer account:
+   - Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   - Create a new application
+   - Add `http://localhost:3000/api/auth/callback/spotify` to your Redirect URIs
+   - Copy the Client ID and Client Secret to your `.env.local` file
 
-To learn more about Next.js, take a look at the following resources:
+5. Set up the database:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   # Create the database
+   createdb melodi
+   
+   # Run Prisma migrations
+   npx prisma migrate dev --name init
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. Run the development server:
 
-## Deploy on Vercel
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+7. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment Variables
+
+- `SPOTIFY_CLIENT_ID`: Your Spotify API Client ID
+- `SPOTIFY_CLIENT_SECRET`: Your Spotify API Client Secret
+- `NEXTAUTH_URL`: Your application URL (default: http://localhost:3000)
+- `NEXTAUTH_SECRET`: A random string for NextAuth.js encryption
+- `DEEPSEEK_API_KEY`: Your DeepSeek AI API key
+- `DATABASE_URL`: PostgreSQL connection string
+
+## Database Schema
+
+The application uses PostgreSQL with the following main tables:
+
+- `User`: Stores user information and Spotify connection details
+- `ListeningHistory`: Tracks user's music listening history with audio features
+- `JournalEntry`: Stores AI-generated journal entries and mood summaries
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

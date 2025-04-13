@@ -58,14 +58,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { content } = await req.json();
+    const { content, selectedMood } = await req.json();
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
+    }
+
+    if (!selectedMood) {
+      return NextResponse.json({ error: "Mood selection is required" }, { status: 400 });
     }
 
     const entry = await prisma.journalEntry.create({
       data: {
         content,
+        selectedMood,
         userId: user.id,
         weekOf: new Date(),
       },

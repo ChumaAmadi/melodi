@@ -85,6 +85,7 @@ model JournalEntry {
   id          String   @id @default(cuid())
   userId      String
   content     String
+  selectedMood String?
   moodSummary String?
   weekOf      DateTime
   createdAt   DateTime @default(now())

@@ -6,7 +6,17 @@ interface JournalEntry {
   content: string;
   createdAt: string;
   moodSummary?: string;
+  selectedMood?: string;
 }
+
+const moodOptions = [
+  { emoji: "😊", label: "Happy", value: "happy" },
+  { emoji: "😌", label: "Calm", value: "calm" },
+  { emoji: "😔", label: "Sad", value: "sad" },
+  { emoji: "😤", label: "Frustrated", value: "frustrated" },
+  { emoji: "🤔", label: "Reflective", value: "reflective" },
+  { emoji: "✨", label: "Inspired", value: "inspired" },
+] as const;
 
 export default function JournalSection() {
   const { data: session } = useSession();
@@ -18,6 +28,7 @@ export default function JournalSection() {
   const [showEntries, setShowEntries] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   const MIN_CHARS = 50; // Minimum characters for meaningful analysis
   const MAX_CHARS = 2000; // Maximum characters allowed
@@ -43,8 +54,11 @@ export default function JournalSection() {
     e.preventDefault();
     if (!newEntry.trim()) return;
     if (newEntry.length < MIN_CHARS) {
-      // Could add a proper toast notification here
       alert(`Please write at least ${MIN_CHARS} characters for meaningful mood analysis.`);
+      return;
+    }
+    if (!selectedMood) {
+      alert("Please select a mood for your entry.");
       return;
     }
 
@@ -53,7 +67,10 @@ export default function JournalSection() {
       const response = await fetch("/api/journal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newEntry }),
+        body: JSON.stringify({ 
+          content: newEntry,
+          selectedMood: selectedMood
+        }),
       });
 
       if (!response.ok) throw new Error("Failed to create entry");
@@ -61,6 +78,7 @@ export default function JournalSection() {
       const entry = await response.json();
       setEntries([entry, ...entries]);
       setNewEntry("");
+      setSelectedMood(null);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       setShowEntries(true);
@@ -107,6 +125,14 @@ export default function JournalSection() {
     });
   };
 
+  const getMoodEmoji = (moodValue: string) => {
+    return moodOptions.find(m => m.value === moodValue)?.emoji || "📝";
+  };
+
+  const getMoodLabel = (moodValue: string) => {
+    return moodOptions.find(m => m.value === moodValue)?.label || "Unknown";
+  };
+
   if (!session) {
     return <div>Please sign in to access your journal.</div>;
   }
@@ -124,6 +150,26 @@ export default function JournalSection() {
       </div>
       
       <form onSubmit={handleSubmit} className="mb-8 relative">
+        <div className="mb-4">
+          <label className="block text-white font-outfit mb-2">How are you feeling?</label>
+          <div className="flex flex-wrap gap-2">
+            {moodOptions.map((mood) => (
+              <button
+                key={mood.value}
+                type="button"
+                onClick={() => setSelectedMood(mood.value)}
+                className={`px-4 py-2 rounded-lg font-outfit text-lg transition-all duration-200 flex items-center gap-2
+                  ${selectedMood === mood.value 
+                    ? 'bg-blue-500 text-white scale-105' 
+                    : 'bg-white/10 text-white hover:bg-white/20'}`}
+              >
+                <span className="text-2xl">{mood.emoji}</span>
+                <span>{mood.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <textarea
           value={newEntry}
           onChange={(e) => {
@@ -131,7 +177,7 @@ export default function JournalSection() {
               setNewEntry(e.target.value);
             }
           }}
-          placeholder="How are you feeling today? Write your thoughts..."
+          placeholder="Write more about how you're feeling..."
           className="w-full h-32 p-4 border rounded-lg resize-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white text-gray-900 font-dm-sans text-lg leading-relaxed"
           disabled={isLoading}
         />
@@ -149,13 +195,15 @@ export default function JournalSection() {
             {newEntry.length}/{MAX_CHARS}
           </div>
         </div>
-        <button
-          type="submit"
-          disabled={isLoading || newEntry.length < MIN_CHARS}
-          className="mt-3 px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-outfit transition-colors duration-200"
-        >
-          {isLoading ? "Saving..." : "Save Entry"}
-        </button>
+        <div className="mt-2 flex justify-end">
+          <button
+            type="submit"
+            disabled={isLoading || !selectedMood}
+            className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 font-outfit transition-colors duration-200"
+          >
+            {isLoading ? "Saving..." : "Save Entry"}
+          </button>
+        </div>
         {showSuccess && (
           <div className="absolute top-0 left-0 right-0 flex justify-center">
             <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-fade-in-down font-outfit">
@@ -170,34 +218,42 @@ export default function JournalSection() {
           <h3 className="text-xl font-outfit font-semibold text-white mb-4">Your Entries</h3>
           {entries.map((entry) => (
             <div key={entry.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="text-gray-600 font-outfit mb-2">
-                    {formatDate(entry.createdAt)}
-                  </p>
-                  <p className="text-gray-900 font-dm-sans line-clamp-2">
-                    {entry.content}
-                  </p>
+              <div className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <p className="text-gray-600 font-outfit">
+                        {formatDate(entry.createdAt)}
+                      </p>
+                      {entry.selectedMood && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
+                          <span className="text-xl">{getMoodEmoji(entry.selectedMood)}</span>
+                          <span className="text-sm text-gray-600 font-outfit">{getMoodLabel(entry.selectedMood)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-900 font-dm-sans line-clamp-2">
+                      {entry.content}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2 ml-4">
+                    <button
+                      onClick={() => setSelectedEntry(selectedEntry === entry.id ? null : entry.id)}
+                      className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors font-outfit"
+                    >
+                      {selectedEntry === entry.id ? "Hide" : "View"}
+                    </button>
+                    <button
+                      onClick={() => initiateDelete(entry.id)}
+                      disabled={isDeleting}
+                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-outfit"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="flex space-x-2 ml-4">
-                  <button
-                    onClick={() => setSelectedEntry(selectedEntry === entry.id ? null : entry.id)}
-                    className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors font-outfit"
-                  >
-                    {selectedEntry === entry.id ? "Hide" : "View"}
-                  </button>
-                  <button
-                    onClick={() => initiateDelete(entry.id)}
-                    disabled={isDeleting}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-outfit"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-              {selectedEntry === entry.id && (
-                <div className="px-4 pb-4">
-                  <div className="pt-4 border-t">
+                {selectedEntry === entry.id && (
+                  <div className="mt-4 pt-4 border-t">
                     <p className="whitespace-pre-wrap text-gray-800 font-dm-sans text-lg leading-relaxed">
                       {entry.content}
                     </p>
@@ -208,8 +264,8 @@ export default function JournalSection() {
                       </div>
                     )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>

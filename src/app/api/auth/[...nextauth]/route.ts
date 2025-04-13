@@ -1,9 +1,9 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import SpotifyProvider from "next-auth/providers/spotify";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
+const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     SpotifyProvider({
@@ -17,9 +17,9 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = token.sub as string;
       }
       return session;
     },
@@ -29,11 +29,18 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+    async redirect({ url, baseUrl }) {
+      // Always redirect to the dashboard after sign in
+      return baseUrl;
+    },
   },
   pages: {
     signIn: "/auth/signin",
   },
-};
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+});
 
-const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST }; 

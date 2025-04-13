@@ -1,9 +1,30 @@
 'use client';
 
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function SignIn() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    // If user is already signed in, redirect to dashboard
+    if (session) {
+      router.push("/");
+    }
+  }, [session, router]);
+
+  // Show loading state while checking session
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 to-purple-600">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-purple-800 to-purple-600">
       <div className="w-full max-w-md p-8 space-y-8 bg-white/10 backdrop-blur-lg rounded-2xl text-center text-white">

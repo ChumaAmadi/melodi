@@ -4,110 +4,78 @@ import { prisma } from '@/lib/prisma';
 import { generateMoodAnalysis, generateJournalEntry } from '@/lib/deepseek';
 
 // GET /api/journal
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
+  const session = await getServerSession();
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    // Get the authenticated user
-    const session = await getServerSession();
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
     // Get the user from the database
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
-    
+
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    
-    // Get the user's journal entries
-    const journalEntries = await prisma.journalEntry.findMany({
+
+    const entries = await prisma.journalEntry.findMany({
       where: {
         userId: user.id,
       },
       orderBy: {
-        weekOf: 'desc',
+        createdAt: "desc",
       },
     });
-    
-    return NextResponse.json({ journalEntries });
+
+    return NextResponse.json(entries);
   } catch (error) {
-    console.error('Error fetching journal entries:', error);
+    console.error("Error fetching journal entries:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch journal entries' },
+      { error: "Failed to fetch journal entries" },
       { status: 500 }
     );
   }
 }
 
 // POST /api/journal
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
+  const session = await getServerSession();
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    // Get the authenticated user
-    const session = await getServerSession();
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
     // Get the user from the database
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
-    
+
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    
-    // Get the user's listening history for the past week
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const listeningHistory = await prisma.listeningHistory.findMany({
-      where: {
-        userId: user.id,
-        playedAt: {
-          gte: oneWeekAgo,
-        },
-      },
-      orderBy: {
-        playedAt: 'asc',
-      },
-    });
-    
-    if (listeningHistory.length === 0) {
-      return NextResponse.json(
-        { error: 'No listening history found for the past week' },
-        { status: 400 }
-      );
+
+    const { content } = await req.json();
+    if (!content) {
+      return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
-    
-    // Generate mood analysis using DeepSeek AI
-    const moodAnalysis = await generateMoodAnalysis(listeningHistory, {});
-    
-    // Generate journal entry using DeepSeek AI
-    const journalContent = await generateJournalEntry(moodAnalysis, listeningHistory);
-    
-    // Create a new journal entry
-    const journalEntry = await prisma.journalEntry.create({
+
+    const entry = await prisma.journalEntry.create({
       data: {
+        content,
         userId: user.id,
-        content: journalContent,
-        moodSummary: moodAnalysis,
         weekOf: new Date(),
       },
     });
-    
-    return NextResponse.json({ 
-      message: 'Journal entry created successfully',
-      journalEntry
-    });
+
+    return NextResponse.json(entry);
   } catch (error) {
-    console.error('Error creating journal entry:', error);
+    console.error("Error creating journal entry:", error);
     return NextResponse.json(
-      { error: 'Failed to create journal entry' },
+      { error: "Failed to create journal entry" },
       { status: 500 }
     );
   }

@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
 
 const inter = Inter({ subsets: ["latin"] });
+
+const outfit = Outfit({ 
+  subsets: ["latin"],
+  variable: "--font-outfit",
+});
+
+const dmSans = DM_Sans({ 
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+});
 
 export const metadata: Metadata = {
   title: "Melodi - Your Musical Journey",
@@ -20,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={`${outfit.variable} ${dmSans.variable}`}>
+      <body className="font-dm-sans">
         <NextAuthProvider>
           {children}
         </NextAuthProvider>

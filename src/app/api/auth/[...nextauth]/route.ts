@@ -11,7 +11,7 @@ const handler = NextAuth({
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: "user-read-email user-read-recently-played user-top-read user-read-currently-playing user-read-playback-state",
+          scope: "user-read-email user-read-recently-played user-top-read user-read-currently-playing user-read-playback-state playlist-read-private playlist-read-collaborative user-library-read streaming",
         },
       },
     }),
@@ -20,6 +20,7 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },

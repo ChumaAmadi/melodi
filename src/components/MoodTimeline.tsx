@@ -12,6 +12,7 @@ import {
   Legend,
   ChartData,
 } from 'chart.js';
+import { format, subDays } from 'date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -33,8 +34,28 @@ interface MoodTimelineProps {
 }
 
 export default function MoodTimeline({ data }: MoodTimelineProps) {
+  // Check if there's any data to display
+  const hasData = data.nostalgic.some(val => val > 0) || 
+                 data.calm.some(val => val > 0) || 
+                 data.energetic.some(val => val > 0);
+
+  if (!hasData) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-white/70">No mood data available. Add journal entries to see your mood timeline.</p>
+      </div>
+    );
+  }
+
+  // Generate labels for the past 7 days
+  const today = new Date();
+  const labels = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(today, 6 - i); // Start from 6 days ago
+    return format(date, 'EEE, MMM d'); // e.g., "Sun, Apr 13"
+  });
+
   const chartData: ChartData<'line'> = {
-    labels: data.labels,
+    labels,
     datasets: [
       {
         label: 'Nostalgic',
@@ -95,7 +116,9 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
           color: 'rgba(255, 255, 255, 0.7)',
           padding: 8,
           stepSize: 20,
-          callback: (value: number) => `${value}%`,
+          callback: function(this: any, tickValue: string | number) {
+            return `${tickValue}%`;
+          },
         },
       },
       x: {
@@ -111,6 +134,8 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
         ticks: {
           color: 'rgba(255, 255, 255, 0.7)',
           padding: 8,
+          maxRotation: 45,
+          minRotation: 45,
         },
       },
     },

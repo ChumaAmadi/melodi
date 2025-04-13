@@ -9,7 +9,7 @@ interface DeepSeekResponse {
 
 export async function generateMoodAnalysis(
   listeningHistory: any[],
-  userPreferences: any
+  journalEntries: any[]
 ): Promise<string> {
   try {
     // Format the listening history for the prompt
@@ -17,20 +17,47 @@ export async function generateMoodAnalysis(
       .map(track => `${track.trackName} by ${track.artistName} (Energy: ${track.energy}, Valence: ${track.valence})`)
       .join('\n');
     
+    // Format journal entries for the prompt
+    const formattedEntries = journalEntries
+      .map(entry => `Entry from ${new Date(entry.createdAt).toLocaleDateString()}: "${entry.content}" (Mood: ${entry.selectedMood})`)
+      .join('\n');
+    
     const prompt = `
-      Based on the following music listening history, analyze the user's emotional state and mood patterns:
+      Based on the following music listening history and journal entries, analyze the user's emotional state and mood patterns:
       
+      MUSIC LISTENING HISTORY:
       ${formattedHistory}
       
+      JOURNAL ENTRIES:
+      ${formattedEntries}
+      
       Consider factors like:
-      - Energy levels (high energy often indicates excitement or stress)
-      - Valence (positive vs negative emotions)
+      - Energy levels in music (high energy often indicates excitement or stress)
+      - Genre of music (different genres can evoke different emotions)
+      - Artist of music (different artists can evoke different emotions)
+      - Album of music (different albums can evoke different emotions)
+      - Valence in music (positive vs negative emotions)
       - Tempo (fast vs slow, indicating activity level)
       - Time of day patterns
+      - Explicit mood selections in journal entries
+      - Themes and emotions expressed in journal content
       
-      Provide a thoughtful, empathetic analysis of what this music suggests about their emotional journey.
-      Focus on patterns and potential emotional needs they might be expressing through their music choices.
+      Provide a thoughtful, empathetic analysis of what this data suggests about their emotional journey.
+      Focus on patterns and potential emotional needs they might be expressing through their music choices and journal entries.
+      
+      Specifically, identify trends in these three mood categories:
+      1. Nostalgic - feelings of longing, reminiscence, or connection to the past
+      2. Calm - feelings of peace, relaxation, or contentment
+      3. Energetic - feelings of excitement, motivation, or high activity
+      
+      For each day of the week (Monday through Sunday), estimate the percentage (0-100) for each mood category.
     `;
+    
+    // Check if we have a valid API key
+    if (!process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY === 'your_deepseek_api_key') {
+      console.warn('DeepSeek API key is not properly configured');
+      throw new Error('DeepSeek API key is not properly configured');
+    }
     
     // Call DeepSeek AI API
     const response = await axios.post<DeepSeekResponse>(
@@ -38,7 +65,7 @@ export async function generateMoodAnalysis(
       {
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: 'You are a thoughtful music therapist who analyzes emotional patterns through music listening habits.' },
+          { role: 'system', content: 'You are a thoughtful music therapist who analyzes emotional patterns through music listening habits and journal entries.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
@@ -55,7 +82,8 @@ export async function generateMoodAnalysis(
     return response.data.choices[0].text;
   } catch (error) {
     console.error('Error generating mood analysis:', error);
-    return 'Unable to analyze mood patterns at this time.';
+    // Re-throw the error so the caller can handle it
+    throw error;
   }
 }
 

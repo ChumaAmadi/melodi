@@ -49,10 +49,12 @@ export default function Dashboard() {
   
   const [moodData, setMoodData] = useState<MoodData>({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    nostalgic: [35, 45, 20, 45, 25, 15, 35],
-    calm: [40, 30, 30, 30, 35, 25, 25],
-    energetic: [25, 25, 50, 25, 40, 60, 40],
+    nostalgic: [0, 0, 0, 0, 0, 0, 0],
+    calm: [0, 0, 0, 0, 0, 0, 0],
+    energetic: [0, 0, 0, 0, 0, 0, 0],
   });
+  const [isLoadingMoodData, setIsLoadingMoodData] = useState(true);
+  const [moodDataError, setMoodDataError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchMusicData() {
@@ -71,7 +73,26 @@ export default function Dashboard() {
       }
     }
 
+    async function fetchMoodData() {
+      if (session) {
+        try {
+          setIsLoadingMoodData(true);
+          setMoodDataError(null);
+          const response = await fetch('/api/mood-analysis');
+          if (!response.ok) throw new Error('Failed to fetch mood data');
+          const data = await response.json();
+          setMoodData(data);
+        } catch (error) {
+          console.error('Error fetching mood data:', error);
+          setMoodDataError('Unable to load mood analysis. Showing data from journal entries only.');
+        } finally {
+          setIsLoadingMoodData(false);
+        }
+      }
+    }
+
     fetchMusicData();
+    fetchMoodData();
   }, [session]);
 
   if (!session) {
@@ -125,7 +146,18 @@ export default function Dashboard() {
           </div>
           
           <div className="mb-6">
-            <MoodTimeline data={moodData} />
+            {isLoadingMoodData ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+              </div>
+            ) : moodDataError ? (
+              <div className="h-[300px] flex flex-col items-center justify-center">
+                <p className="text-white/70 mb-4">{moodDataError}</p>
+                <MoodTimeline data={moodData} />
+              </div>
+            ) : (
+              <MoodTimeline data={moodData} />
+            )}
           </div>
         </section>
 

@@ -2,6 +2,28 @@ import { Session } from "next-auth";
 
 const BASE_URL = 'https://api.spotify.com/v1';
 
+async function getArtistGenres(artistId: string, accessToken: string): Promise<string[]> {
+  try {
+    console.log(`Fetching genres for artist ${artistId}...`);
+    const response = await fetch(`${BASE_URL}/artists/${artistId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch artist genres');
+    }
+
+    const data = await response.json();
+    console.log(`Genres for artist ${data.name}:`, data.genres);
+    return data.genres || [];
+  } catch (error) {
+    console.error('Error fetching artist genres:', error);
+    return [];
+  }
+}
+
 export async function getTopTracks(session: Session | null, timeRange: 'short_term' | 'medium_term' | 'long_term' = 'short_term') {
   if (!session?.user) return null;
   if (!session.accessToken) {
@@ -25,14 +47,27 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
 
     const data = await response.json();
     console.log('Top tracks fetched:', data.items.length);
-    return data.items.map((track: any) => ({
-      id: track.id,
-      name: track.name,
-      artist: track.artists[0].name,
-      album: track.album.name,
-      albumArt: track.album.images[0]?.url,
-      playCount: 0, // We'll need to get this from recent plays
-    }));
+
+    // Fetch genres for each track's artist
+    const tracksWithGenres = await Promise.all(
+      data.items.map(async (track: any) => {
+        const genres = await getArtistGenres(track.artists[0].id, session.accessToken as string);
+        const mainGenre = genres[0] || 'other'; // Use first genre as main genre
+
+        return {
+          id: track.id,
+          name: track.name,
+          artist: track.artists[0].name,
+          album: track.album.name,
+          albumArt: track.album.images[0]?.url,
+          playCount: 0,
+          genre: mainGenre,
+          subGenres: genres.slice(1),
+        };
+      })
+    );
+
+    return tracksWithGenres;
   } catch (error) {
     console.error('Error in getTopTracks:', error);
     return null;
@@ -62,14 +97,27 @@ export async function getRecentlyPlayed(session: Session | null) {
 
     const data = await response.json();
     console.log('Recently played tracks fetched:', data.items.length);
-    return data.items.map((item: any) => ({
-      id: item.track.id,
-      name: item.track.name,
-      artist: item.track.artists[0].name,
-      album: item.track.album.name,
-      albumArt: item.track.album.images[0]?.url,
-      playedAt: item.played_at,
-    }));
+
+    // Fetch genres for each track's artist
+    const tracksWithGenres = await Promise.all(
+      data.items.map(async (item: any) => {
+        const genres = await getArtistGenres(item.track.artists[0].id, session.accessToken as string);
+        const mainGenre = genres[0] || 'other'; // Use first genre as main genre
+
+        return {
+          id: item.track.id,
+          name: item.track.name,
+          artist: item.track.artists[0].name,
+          album: item.track.album.name,
+          albumArt: item.track.album.images[0]?.url,
+          playedAt: item.played_at,
+          genre: mainGenre,
+          subGenres: genres.slice(1),
+        };
+      })
+    );
+
+    return tracksWithGenres;
   } catch (error) {
     console.error('Error in getRecentlyPlayed:', error);
     return null;

@@ -8,6 +8,7 @@ import MoodTimeline from "./MoodTimeline";
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import JournalSection from "./JournalSection";
 import MelodiChat from './MelodiChat';
+import GenreDistribution from './GenreDistribution';
 
 interface Track {
   id: string;
@@ -33,6 +34,12 @@ interface MoodData {
   energetic: number[];
 }
 
+interface GenreData {
+  name: string;
+  count: number;
+  color: string;
+}
+
 export default function Dashboard() {
   const { data: session } = useSession();
   const [topTracks, setTopTracks] = useState<Track[]>([]);
@@ -40,6 +47,15 @@ export default function Dashboard() {
   const [topArtists, setTopArtists] = useState<TopItem[]>([]);
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
   const [listeningHistory, setListeningHistory] = useState<any[]>([]);
+  const [genreData, setGenreData] = useState<{ genreDistribution: GenreData[], timelineData: any, correlationData: any }>({
+    genreDistribution: [],
+    timelineData: null,
+    correlationData: null
+  });
+  const [isLoadingMoodData, setIsLoadingMoodData] = useState(true);
+  const [moodDataError, setMoodDataError] = useState<string | null>(null);
+  const [isLoadingGenreData, setIsLoadingGenreData] = useState(true);
+  const [genreDataError, setGenreDataError] = useState<string | null>(null);
   
   // Get first name from full name
   const firstName = session?.user?.name?.split(' ')[0] || '';
@@ -56,17 +72,16 @@ export default function Dashboard() {
     calm: [0, 0, 0, 0, 0, 0, 0],
     energetic: [0, 0, 0, 0, 0, 0, 0],
   });
-  const [isLoadingMoodData, setIsLoadingMoodData] = useState(true);
-  const [moodDataError, setMoodDataError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       if (session) {
         try {
-          const [topTracksData, recentTracksData, journalData] = await Promise.all([
+          const [topTracksData, recentTracksData, journalData, genreDistData] = await Promise.all([
             getTopTracks(session),
             getRecentlyPlayed(session),
             fetch('/api/journal').then(res => res.json()),
+            fetch('/api/genre-distribution').then(res => res.json()),
           ]);
 
           if (topTracksData) setTopTracks(topTracksData);
@@ -77,8 +92,13 @@ export default function Dashboard() {
             setListeningHistory(recentTracksData);
           }
           if (journalData) setJournalEntries(journalData);
+          if (genreDistData) setGenreData(genreDistData);
         } catch (error) {
           console.error('Error fetching data:', error);
+          setGenreDataError('Unable to load genre distribution data.');
+        } finally {
+          setIsLoadingMoodData(false);
+          setIsLoadingGenreData(false);
         }
       }
     }
@@ -120,9 +140,9 @@ export default function Dashboard() {
           <Image
             src="/melodi.png"
             alt="Melodi"
-            width={35}
-            height={35}
-            className="w-8 h-8"
+            width={48}
+            height={48}
+            className="w-12 h-12 pt-1"
           />
           <h1 className="text-2xl font-bold text-white">melodi</h1>
         </div>
@@ -175,6 +195,31 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <MoodTimeline data={moodData} />
+              )}
+            </div>
+          </section>
+
+          <section className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Genre Analysis</h2>
+              <span className="text-sm text-white/70">{dateRange}</span>
+            </div>
+            
+            <div className="mb-6">
+              {isLoadingGenreData ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                </div>
+              ) : genreDataError ? (
+                <div className="h-[300px] flex flex-col items-center justify-center">
+                  <p className="text-white/70 mb-4">{genreDataError}</p>
+                </div>
+              ) : (
+                <GenreDistribution 
+                  data={genreData.genreDistribution} 
+                  timelineData={genreData.timelineData}
+                  correlationData={genreData.correlationData}
+                />
               )}
             </div>
           </section>

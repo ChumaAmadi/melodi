@@ -50,14 +50,12 @@ export async function GET(request: NextRequest) {
 // POST /api/listening-history
 export async function POST(request: NextRequest) {
   try {
-    // Get the authenticated user
     const session = await getServerSession();
     
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Get the user from the database
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
@@ -66,7 +64,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Parse the request body
     const body = await request.json();
     const { tracks } = body;
     
@@ -77,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create listening history records
+    // Create listening history records with genre information
     const listeningHistory = await prisma.listeningHistory.createMany({
       data: tracks.map((track: any) => ({
         userId: user.id,
@@ -92,6 +89,8 @@ export async function POST(request: NextRequest) {
         tempo: track.audio_features?.tempo,
         key: track.audio_features?.key,
         mode: track.audio_features?.mode,
+        genre: track.genre || 'other',
+        subGenres: track.subGenres || [],
       })),
       skipDuplicates: true,
     });

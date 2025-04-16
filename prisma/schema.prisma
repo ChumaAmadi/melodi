@@ -57,6 +57,7 @@ model User {
   accounts         Account[]
   journalEntries   JournalEntry[]
   listeningHistory ListeningHistory[]
+  genreMoodCorrelations GenreMoodCorrelation[]
   sessions         Session[]
 }
 
@@ -74,24 +75,44 @@ model ListeningHistory {
   tempo      Float?
   key        Int?
   mode       Int?
+  genre      String?
+  subGenres  String[]
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([playedAt])
+  @@index([genre])
 }
 
 model JournalEntry {
-  id          String   @id @default(cuid())
-  userId      String
-  content     String
+  id           String   @id @default(cuid())
+  userId       String
+  content      String
   selectedMood String?
-  moodSummary String?
-  weekOf      DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moodSummary  String?
+  weekOf       DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([weekOf])
+}
+
+model GenreMoodCorrelation {
+  id        String   @id @default(cuid())
+  userId    String
+  genre     String
+  mood      String
+  strength  Float    // Correlation strength (0-1)
+  count     Int      // Number of times this correlation occurred
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, genre, mood])
+  @@index([userId])
+  @@index([genre])
+  @@index([mood])
 }

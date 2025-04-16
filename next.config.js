@@ -2,6 +2,16 @@
 const nextConfig = {
   distDir: '.next',
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'ngrok-skip-browser-warning', value: 'true' }
+        ],
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       {
@@ -25,6 +35,7 @@ const nextConfig = {
         hostname: 'wrapped-images.spotifycdn.com',
       },
     ],
+    domains: ['i.scdn.co'],
   },
 };
 

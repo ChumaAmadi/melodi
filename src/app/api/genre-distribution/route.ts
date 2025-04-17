@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { normalizeGenre } from '@/lib/genreMapping';
 import { GENRE_COLORS } from '@/lib/constants/colors';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
-  const session = await getServerSession();
+  const session = await auth();
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

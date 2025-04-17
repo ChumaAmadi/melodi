@@ -3,13 +3,17 @@ import { prisma } from '@/lib/prisma';
 import { serverFunctions } from '@/lib/spotify';
 import { auth } from '@/auth';
 
-export async function GET() {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  const session = await auth();
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     });

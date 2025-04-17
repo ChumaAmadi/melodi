@@ -1,12 +1,12 @@
 import type { NextAuthConfig } from "next-auth";
-import SpotifyProvider from "next-auth/providers/spotify";
+import Spotify from "next-auth/providers/spotify";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 export const authConfig = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    SpotifyProvider({
+    Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
       authorization: {
@@ -19,11 +19,8 @@ export const authConfig = {
   callbacks: {
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub as string;
-        session.user.name = token.name as string;
-        session.user.email = token.email as string;
-        session.user.image = token.picture as string;
-        session.accessToken = token.accessToken as string;
+        session.user.id = token.sub!;
+        (session as any).accessToken = token.accessToken;
       }
       return session;
     },

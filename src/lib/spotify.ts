@@ -314,6 +314,19 @@ export function processRecentlyPlayed(tracks: any[]) {
   };
 }
 
+export async function fetchUserData() {
+  try {
+    const response = await fetch('/api/spotify/user-data');
+    if (!response.ok) {
+      throw new Error('Failed to fetch user data');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    throw error;
+  }
+}
+
 export const serverFunctions = {
   getTopTracks,
   getRecentlyPlayed,

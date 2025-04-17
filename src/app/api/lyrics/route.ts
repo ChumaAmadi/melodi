@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 
 const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
 const GENIUS_BASE_URL = 'https://api.genius.com';
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
 
 async function searchSong(track: string, artist: string) {
   const response = await fetch(
@@ -48,7 +51,7 @@ async function getLyrics(url: string) {
 }
 
 export async function GET(request: Request) {
-  const session = await getServerSession();
+  const session = await auth();
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

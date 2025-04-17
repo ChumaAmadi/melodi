@@ -1,8 +1,7 @@
-import { getErrorState } from '@/lib/spotify';
+import { getErrorState } from '@/lib/spotifyTypes';
 import { auth } from '@/auth';
 import { Suspense } from 'react';
-import { DashboardContent } from './DashboardContent';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { DashboardContent, LoadingSpinner } from '@/components';
 
 export default async function Dashboard() {
   const session = await auth();

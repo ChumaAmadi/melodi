@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 
@@ -29,6 +31,8 @@ export default function JournalSection() {
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const MIN_CHARS = 50; // Minimum characters for meaningful analysis
   const MAX_CHARS = 2000; // Maximum characters allowed
@@ -45,8 +49,10 @@ export default function JournalSection() {
       if (!response.ok) throw new Error("Failed to fetch entries");
       const data = await response.json();
       setEntries(data);
-    } catch (error) {
-      console.error("Error fetching entries:", error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -135,6 +141,14 @@ export default function JournalSection() {
 
   if (!session) {
     return <div>Please sign in to access your journal.</div>;
+  }
+
+  if (loading) {
+    return <div className="bg-white p-6 rounded-lg shadow-md">Loading journal entries...</div>;
+  }
+
+  if (error) {
+    return <div className="bg-white p-6 rounded-lg shadow-md">Error: {error}</div>;
   }
 
   return (

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';

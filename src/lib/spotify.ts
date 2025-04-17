@@ -1,6 +1,7 @@
 import { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeGenre, categorizeGenres, getRelatedGenres } from "./genreMapping";
+import { enhancedGenreDetection } from './genreDetection';
 
 const BASE_URL = 'https://api.spotify.com/v1';
 
@@ -8,54 +9,20 @@ async function getAccessToken(session: Session | null): Promise<string | null> {
   return session?.accessToken || null;
 }
 
-async function getArtistGenres(artistId: string, accessToken: string): Promise<{ mainGenres: string[], subGenres: string[] }> {
+async function getArtistGenres(artistId: string, accessToken: string, artistName: string): Promise<{ mainGenres: string[], subGenres: string[] }> {
   try {
-    console.log(`Fetching genres for artist ${artistId}...`);
-    const response = await fetch(`${BASE_URL}/artists/${artistId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch artist genres');
-    }
-
-    const data = await response.json();
-    const spotifyGenres = data.genres || [];
-    console.log(`Raw genres for artist ${data.name}:`, spotifyGenres);
-
-    // If no genres from Spotify, try to infer from artist name or default to rap
-    if (spotifyGenres.length === 0) {
-      console.log(`No genres found for artist ${data.name}, inferring...`);
-      // You can add more artist name checks here
-      if (data.name.toLowerCase().includes('lil') || 
-          data.name.toLowerCase().includes('young') ||
-          data.name.toLowerCase().includes('rapper')) {
-        return { mainGenres: ['rap'], subGenres: ['hip-hop', 'trap'] };
-      }
-    }
+    console.log(`Getting genres for artist: ${artistName}`);
     
-    // Get main genres using our categorization system
-    const mainGenres = categorizeGenres(spotifyGenres);
-    console.log(`Main genres for ${data.name}:`, mainGenres);
-    
-    // Get related genres for the primary genre
-    const primaryGenre = mainGenres[0] || 'rap'; // Default to rap if no genre found
-    const relatedGenres = getRelatedGenres(primaryGenre);
-    
-    // Filter out main genres from related genres to avoid duplication
-    const subGenres = relatedGenres.filter(genre => !mainGenres.includes(normalizeGenre(genre)));
-
-    console.log(`Processed genres for artist ${data.name}:`, {
-      mainGenres,
-      subGenres
-    });
-
-    return { mainGenres, subGenres };
+    // Skip Spotify genre fetch since it's causing rate limiting issues
+    // Instead, use Last.fm and Genius directly through enhancedGenreDetection
+    return enhancedGenreDetection(
+      '', // track name not needed for artist-level genres
+      artistName,
+      artistId
+    );
   } catch (error) {
-    console.error('Error fetching artist genres:', error);
-    return { mainGenres: ['rap'], subGenres: ['hip-hop'] }; // Default to rap instead of other
+    console.error('Error in getArtistGenres:', error);
+    return { mainGenres: ['other'], subGenres: [] };
   }
 }
 
@@ -143,7 +110,7 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
           id: track.id
         });
         
-        const { mainGenres, subGenres } = await getArtistGenres(track.artists[0].id, session.accessToken as string);
+        const { mainGenres, subGenres } = await getArtistGenres(track.artists[0].id, session.accessToken as string, track.artists[0].name);
 
         const processedTrack = {
           id: track.id,
@@ -204,7 +171,11 @@ export async function getRecentlyPlayed(session: Session | null) {
     // Fetch genres for each track's artist
     const tracksWithGenres = await Promise.all(
       data.items.map(async (item: any) => {
-        const { mainGenres, subGenres } = await getArtistGenres(item.track.artists[0].id, session.accessToken as string);
+        const { mainGenres, subGenres } = await getArtistGenres(
+          item.track.artists[0].id,
+          session.accessToken as string,
+          item.track.artists[0].name // Pass artist name
+        );
 
         const processedTrack = {
           id: item.track.id,
@@ -341,4 +312,20 @@ export function processRecentlyPlayed(tracks: any[]) {
     recentTracks,
     timestamp: now.getTime() // Add timestamp for cache validation
   };
-} 
+}
+
+export const serverFunctions = {
+  getTopTracks,
+  getRecentlyPlayed,
+  getListeningStats: async (userId: string) => {
+    const stats = await prisma.listeningHistory.groupBy({
+      by: ['genre'],
+      where: { userId },
+      _count: true,
+    });
+    return stats.map(stat => ({
+      genre: stat.genre,
+      count: stat._count,
+    }));
+  }
+}; 

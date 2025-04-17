@@ -109,34 +109,34 @@ function processMoodAnalysis(analysis: string, entries: any[]) {
       // Add mood values based on the selected mood
       switch (entry.selectedMood.toLowerCase()) {
         case 'happy':
-          tempMoodData.energetic[adjustedDayIndex] += 80;
-          tempMoodData.calm[adjustedDayIndex] += 60;
+          tempMoodData.energetic[adjustedDayIndex] += 85;
+          tempMoodData.calm[adjustedDayIndex] += 40;
           break;
         case 'calm':
-          tempMoodData.calm[adjustedDayIndex] += 90;
-          tempMoodData.energetic[adjustedDayIndex] += 20;
+          tempMoodData.calm[adjustedDayIndex] += 95;
+          tempMoodData.nostalgic[adjustedDayIndex] += 30;
           break;
         case 'sad':
-          tempMoodData.nostalgic[adjustedDayIndex] += 70;
-          tempMoodData.calm[adjustedDayIndex] += 40;
-          tempMoodData.energetic[adjustedDayIndex] += 10;
-          break;
-        case 'frustrated':
-          tempMoodData.energetic[adjustedDayIndex] += 70;
+          tempMoodData.nostalgic[adjustedDayIndex] += 80;
           tempMoodData.calm[adjustedDayIndex] += 20;
           break;
+        case 'frustrated':
+          tempMoodData.energetic[adjustedDayIndex] += 75;
+          tempMoodData.nostalgic[adjustedDayIndex] += 15;
+          break;
         case 'reflective':
-          tempMoodData.nostalgic[adjustedDayIndex] += 60;
-          tempMoodData.calm[adjustedDayIndex] += 50;
+          tempMoodData.nostalgic[adjustedDayIndex] += 90;
+          tempMoodData.calm[adjustedDayIndex] += 60;
           break;
         case 'inspired':
-          tempMoodData.energetic[adjustedDayIndex] += 60;
-          tempMoodData.nostalgic[adjustedDayIndex] += 40;
+          tempMoodData.energetic[adjustedDayIndex] += 90;
+          tempMoodData.nostalgic[adjustedDayIndex] += 45;
           break;
         default:
           // Default values if mood not recognized
-          tempMoodData.calm[adjustedDayIndex] += 50;
-          tempMoodData.energetic[adjustedDayIndex] += 50;
+          tempMoodData.calm[adjustedDayIndex] += 33;
+          tempMoodData.energetic[adjustedDayIndex] += 33;
+          tempMoodData.nostalgic[adjustedDayIndex] += 33;
       }
     });
 

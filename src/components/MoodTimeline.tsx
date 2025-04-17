@@ -60,37 +60,37 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
       {
         label: 'Nostalgic',
         data: data.nostalgic,
-        borderColor: '#B8A5FF',
-        backgroundColor: '#B8A5FF',
+        borderColor: 'rgba(255, 92, 168, 0.85)', // Electric Rose
+        backgroundColor: 'rgba(255, 92, 168, 0.85)',
         tension: 0.4,
         pointRadius: 4,
-        pointBackgroundColor: '#B8A5FF',
-        pointBorderColor: '#B8A5FF',
-        pointBorderWidth: 1,
+        pointBackgroundColor: 'rgba(255, 92, 168, 0.85)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
         fill: false,
       },
       {
         label: 'Calm',
         data: data.calm,
-        borderColor: '#4CD9AC',
-        backgroundColor: '#4CD9AC',
+        borderColor: 'rgba(87, 168, 255, 0.85)', // Dream Blue
+        backgroundColor: 'rgba(87, 168, 255, 0.85)',
         tension: 0.4,
         pointRadius: 4,
-        pointBackgroundColor: '#4CD9AC',
-        pointBorderColor: '#4CD9AC',
-        pointBorderWidth: 1,
+        pointBackgroundColor: 'rgba(87, 168, 255, 0.85)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
         fill: false,
       },
       {
         label: 'Energetic',
         data: data.energetic,
-        borderColor: '#FFB067',
-        backgroundColor: '#FFB067',
+        borderColor: 'rgba(255, 158, 87, 0.85)', // Peach Neon
+        backgroundColor: 'rgba(255, 158, 87, 0.85)',
         tension: 0.4,
         pointRadius: 4,
-        pointBackgroundColor: '#FFB067',
-        pointBorderColor: '#FFB067',
-        pointBorderWidth: 1,
+        pointBackgroundColor: 'rgba(255, 158, 87, 0.85)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
         fill: false,
       },
     ],
@@ -148,7 +148,7 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
         titleColor: '#1a1a1a',
         bodyColor: '#1a1a1a',
         padding: 12,
-        borderColor: 'rgba(167, 139, 250, 0.5)',
+        borderColor: 'rgba(255, 92, 168, 0.5)', // Electric Rose with reduced opacity
         borderWidth: 1,
         callbacks: {
           label: function(context: any) {
@@ -166,9 +166,9 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
       </div>
       <div className="flex justify-center gap-6 mt-4">
         {[
-          { label: 'Nostalgic', color: '#B8A5FF' },
-          { label: 'Calm', color: '#4CD9AC' },
-          { label: 'Energetic', color: '#FFB067' },
+          { label: 'Nostalgic', color: 'rgba(255, 92, 168, 0.85)' }, // Electric Rose
+          { label: 'Calm', color: 'rgba(87, 168, 255, 0.85)' }, // Dream Blue
+          { label: 'Energetic', color: 'rgba(255, 158, 87, 0.85)' }, // Peach Neon
         ].map((mood) => (
           <div key={mood.label} className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: mood.color }} />

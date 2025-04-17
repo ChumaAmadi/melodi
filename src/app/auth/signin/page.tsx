@@ -129,7 +129,7 @@ export default function SignIn() {
   const router = useRouter();
   const [currentHeadline, setCurrentHeadline] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isHovered, setIsHovered] = useState(null);
+  const [isHovered, setIsHovered] = useState<number | null>(null);
 
   const particlesInit = useCallback(async (engine: Engine) => {
     await loadSlim(engine);
@@ -162,10 +162,10 @@ export default function SignIn() {
       move: {
         enable: true,
         speed: 0.5,
-        direction: "none",
+        direction: "none" as const,
         random: true,
         straight: false,
-        outModes: "out"
+        outModes: "out" as const
       }
     },
     interactivity: {

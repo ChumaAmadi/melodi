@@ -26,8 +26,9 @@ interface Track {
 interface TopItem {
   id: string;
   name: string;
-  image: string;
+  image?: string;
   count: number;
+  artist?: string;
 }
 
 interface MoodData {
@@ -42,6 +43,8 @@ interface GenreData {
   count: number;
   color: string;
 }
+
+const REFRESH_INTERVAL = 30000; // Refresh every 30 seconds
 
 export default function Dashboard() {
   const { data: session } = useSession();
@@ -102,8 +105,8 @@ export default function Dashboard() {
           
           if (recentTracksData) {
             const processedData = processRecentlyPlayed(recentTracksData);
-            setTopAlbums(processedData.topAlbums.slice(0, 5));
-            setTopArtists(processedData.topArtists.slice(0, 5));
+            setTopAlbums(processedData.topAlbums);
+            setTopArtists(processedData.topArtists);
             setListeningHistory(recentTracksData);
           }
           if (journalData) setJournalEntries(journalData);
@@ -139,8 +142,14 @@ export default function Dashboard() {
       }
     }
 
+    // Initial fetch
     fetchData();
-    fetchMoodData();
+
+    // Set up periodic refresh
+    const refreshInterval = setInterval(fetchData, REFRESH_INTERVAL);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(refreshInterval);
   }, [session]);
 
   if (!session) {
@@ -152,8 +161,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900">
-      <header className="w-full p-4 flex items-center justify-between bg-black/20">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900">
+      <header className="w-full px-6 py-4 flex items-center justify-between bg-black/10 backdrop-blur-sm border-b border-white/5">
         <div className="flex items-center">
           <Link href="/" className="hover:opacity-80 transition-opacity">
             <Image
@@ -173,7 +182,7 @@ export default function Dashboard() {
         )}
       </header>
 
-      <main className="container mx-auto p-6 space-y-6 relative z-0">
+      <main className="container mx-auto px-6 py-8 space-y-8 relative z-0">
         <MelodiChat
           userName={session?.user?.name || ''}
           journalEntries={journalEntries}
@@ -181,214 +190,139 @@ export default function Dashboard() {
           dateRange={dateRange}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            {
-              title: "Your Week in Music",
-              content: (
-                <div className="mb-6">
-                  {isLoadingMoodData ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-                    </div>
-                  ) : moodDataError ? (
-                    <div className="h-[300px] flex flex-col items-center justify-center">
-                      <p className="text-white/70 mb-4">{moodDataError}</p>
-                      <MoodTimeline data={moodData} />
-                    </div>
-                  ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  Your Week in Music
+                  <span className="text-sm font-normal text-white/60">{dateRange}</span>
+                </h2>
+                {isLoadingMoodData ? (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                  </div>
+                ) : moodDataError ? (
+                  <div className="h-[300px] flex flex-col items-center justify-center">
+                    <p className="text-white/70 mb-4">{moodDataError}</p>
                     <MoodTimeline data={moodData} />
-                  )}
-                </div>
-              ),
-              date: dateRange
-            },
-            {
-              title: "Genre Analysis",
-              content: (
-                <div className="mb-6">
-                  {isLoadingGenreData ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-                    </div>
-                  ) : genreDataError ? (
-                    <div className="h-[300px] flex flex-col items-center justify-center">
-                      <p className="text-white/70 mb-4">{genreDataError}</p>
-                    </div>
-                  ) : !genreData.genreDistribution || genreData.genreDistribution.length === 0 ? (
-                    <div className="h-[300px] flex items-center justify-center">
-                      <p className="text-white/70 text-center">No genre data available for this week.</p>
-                    </div>
-                  ) : (
-                    <GenreDistribution 
-                      data={genreData.genreDistribution || []} 
-                      timelineData={genreData.timelineData || null}
-                      correlationData={genreData.correlationData || null}
-                    />
-                  )}
-                </div>
-              ),
-              date: dateRange
-            }
-          ].map((section, index) => (
-            <section 
-              key={section.title}
-              className={`bg-white/10 backdrop-blur-lg rounded-xl p-6 animate-fade-in opacity-0 [animation-fill-mode:forwards]`}
-              style={{ animationDelay: `${(index + 2) * 200}ms` }}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                <span className="text-sm text-white/70">{section.date}</span>
+                  </div>
+                ) : (
+                  <MoodTimeline data={moodData} />
+                )}
               </div>
-              {section.content}
-            </section>
-          ))}
+            </div>
 
-          {[
-            {
-              title: "Your Top Songs",
-              content: (
-                <>
-                  {isLoadingTopTracks ? (
-                    <div className="h-[200px] flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-                    </div>
-                  ) : topTracksError ? (
-                    <div className="h-[200px] flex items-center justify-center">
-                      <p className="text-white/70 text-center">{topTracksError}</p>
-                    </div>
-                  ) : topTracks.length === 0 ? (
-                    <div className="h-[200px] flex items-center justify-center">
-                      <p className="text-white/70 text-center">No top tracks available for this week.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {topTracks.map((track, idx) => (
-                        <div 
-                          key={track.id} 
-                          className="flex items-center space-x-4 text-white animate-fade-in opacity-0 [animation-fill-mode:forwards]"
-                          style={{ animationDelay: `${idx * 100}ms` }}
-                        >
-                          {track.albumArt && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-white">Your Top Songs</h2>
+                {isLoadingTopTracks ? (
+                  <div className="h-[200px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                  </div>
+                ) : topTracksError ? (
+                  <div className="text-white/70 p-4">{topTracksError}</div>
+                ) : (
+                  <div className="space-y-4">
+                    {topTracks.slice(0, 5).map((track, index) => (
+                      <div key={track.id} className="flex items-center gap-4 group">
+                        <div className="w-12 h-12 relative shrink-0">
+                          {track.albumArt ? (
                             <Image
                               src={track.albumArt}
                               alt={track.album}
                               width={48}
                               height={48}
-                              className="rounded-md hover:scale-105 transition-transform duration-200"
+                              className="rounded-md object-cover"
                             />
+                          ) : (
+                            <div className="w-12 h-12 rounded-md bg-white/10 flex items-center justify-center">
+                              <MusicalNoteIcon className="w-6 h-6 text-white/40" />
+                            </div>
                           )}
-                          <div>
-                            <h3 className="font-medium">{track.name}</h3>
-                            <p className="text-sm text-white/70">{track.artist}</p>
+                          <div className="absolute -left-2 -top-2 w-6 h-6 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-sm font-medium text-white/80">
+                            {index + 1}
                           </div>
-                          {track.playCount !== undefined && (
-                            <span className="ml-auto text-sm text-white/60">
-                              {track.playCount} plays
-                            </span>
-                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )
-            },
-            {
-              title: "Top Albums This Week",
-              content: (
-                <div className="space-y-4">
-                  {topAlbums.map((album) => (
-                    <div key={album.id} className="flex items-center space-x-4 text-white">
-                      {album.image && (
-                        <Image
-                          src={album.image}
-                          alt={album.name}
-                          width={48}
-                          height={48}
-                          className="rounded-md"
-                        />
-                      )}
-                      <div>
-                        <h3 className="font-medium">{album.name}</h3>
-                        <p className="text-sm text-white/70">{album.count} plays</p>
-                      </div>
-                    </div>
-                  ))}
-                  {topAlbums.length === 0 && (
-                    <p className="text-white/70 text-sm">No album data available for this week</p>
-                  )}
-                </div>
-              )
-            },
-            {
-              title: "Top Artists This Week",
-              content: (
-                <div className="space-y-4">
-                  {topArtists.map((artist) => (
-                    <div key={artist.id} className="flex items-center space-x-4 text-white">
-                      {artist.image && (
-                        <Image
-                          src={artist.image}
-                          alt={artist.name}
-                          width={48}
-                          height={48}
-                          className="rounded-md"
-                        />
-                      )}
-                      <div>
-                        <h3 className="font-medium">{artist.name}</h3>
-                        <p className="text-sm text-white/70">{artist.count} plays</p>
-                      </div>
-                    </div>
-                  ))}
-                  {topArtists.length === 0 && (
-                    <p className="text-white/70 text-sm">No artist data available for this week</p>
-                  )}
-                </div>
-              )
-            },
-            {
-              title: "Top Playlists",
-              content: (
-                <div className="space-y-4">
-                  {topPlaylists.map((playlist) => (
-                    <div key={playlist.id} className="flex items-center space-x-4 text-white">
-                      {playlist.image ? (
-                        <Image
-                          src={playlist.image}
-                          alt={playlist.name}
-                          width={48}
-                          height={48}
-                          className="rounded-md"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-zinc-800 rounded-md flex items-center justify-center">
-                          <MusicalNoteIcon className="w-8 h-8 text-zinc-400" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-white group-hover:text-purple-300 transition-colors">
+                            {track.name}
+                          </div>
+                          <div className="truncate text-white/60 text-sm">
+                            {track.artist}
+                          </div>
                         </div>
-                      )}
-                      <div>
-                        <h3 className="font-medium">{playlist.name}</h3>
-                        <p className="text-sm text-white/70">{playlist.trackCount} tracks • By {playlist.owner}</p>
+                        {track.playCount && (
+                          <div className="text-sm text-white/40">
+                            {track.playCount} plays
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-6 space-y-6">
+                <h2 className="text-xl font-semibold text-white">Genre Analysis</h2>
+                {isLoadingGenreData ? (
+                  <div className="h-[400px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                  </div>
+                ) : genreDataError ? (
+                  <div className="text-white/70 p-4">{genreDataError}</div>
+                ) : (
+                  <GenreDistribution 
+                    data={genreData.genreDistribution} 
+                    timelineData={genreData.timelineData}
+                    correlationData={genreData.correlationData}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+              <div className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-white">Top Albums This Week</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {topAlbums.slice(0, 10).map((album) => (
+                    <div key={album.id} className="flex items-center gap-3 group">
+                      <div className="w-16 h-16 shrink-0">
+                        {album.image ? (
+                          <Image
+                            src={album.image}
+                            alt={album.name}
+                            width={64}
+                            height={64}
+                            className="rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-md bg-white/10 flex items-center justify-center">
+                            <MusicalNoteIcon className="w-8 h-8 text-white/40" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-white group-hover:text-purple-300 transition-colors">
+                          {album.name}
+                        </div>
+                        <div className="text-sm text-white/60">
+                          {album.artist}
+                        </div>
+                        <div className="text-sm text-white/60">
+                          {album.count} {album.count === 1 ? 'play' : 'plays'}
+                        </div>
                       </div>
                     </div>
                   ))}
-                  {topPlaylists.length === 0 && (
-                    <p className="text-white/70 text-sm">No playlists available</p>
-                  )}
                 </div>
-              )
-            }
-          ].map((section, index) => (
-            <section 
-              key={section.title}
-              className={`bg-white/10 backdrop-blur-lg rounded-xl p-6 animate-fade-in opacity-0 [animation-fill-mode:forwards]`}
-              style={{ animationDelay: `${(index + 4) * 200}ms` }}
-            >
-              <h2 className="text-xl font-semibold text-white mb-6">{section.title}</h2>
-              {section.content}
-            </section>
-          ))}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>

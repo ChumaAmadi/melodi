@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { startOfWeek, endOfWeek } from 'date-fns';
+import { normalizeGenre } from '@/lib/genreMapping';
 
 export async function GET() {
   const session = await getServerSession();
@@ -68,11 +69,14 @@ export async function GET() {
       relevantTracks.forEach(track => {
         if (!track.genre) return;
         
-        if (!correlations.has(track.genre)) {
-          correlations.set(track.genre, new Map());
+        // Normalize the genre
+        const normalizedGenre = track.genre.toLowerCase().trim();
+        
+        if (!correlations.has(normalizedGenre)) {
+          correlations.set(normalizedGenre, new Map());
         }
         
-        const genreCorrelations = correlations.get(track.genre)!;
+        const genreCorrelations = correlations.get(normalizedGenre)!;
         if (!genreCorrelations.has(entry.selectedMood!)) {
           genreCorrelations.set(entry.selectedMood!, { count: 0, total: 0 });
         }
@@ -83,15 +87,23 @@ export async function GET() {
       });
     });
 
-    // Convert correlations to array format
-    const correlationData = Array.from(correlations.entries()).map(([genre, moodMap]) => ({
-      genre,
-      moods: Array.from(moodMap.entries()).map(([mood, data]) => ({
-        mood,
-        strength: data.count / data.total,
-        count: data.count,
-      })),
-    }));
+    // Convert correlations to array format and sort by genre prevalence
+    const correlationData = Array.from(correlations.entries())
+      .sort((a, b) => {
+        const totalA = Array.from(a[1].values()).reduce((sum, val) => sum + val.count, 0);
+        const totalB = Array.from(b[1].values()).reduce((sum, val) => sum + val.count, 0);
+        return totalB - totalA;
+      })
+      .map(([genre, moodMap]) => ({
+        genre,
+        moods: Array.from(moodMap.entries())
+          .sort((a, b) => b[1].count - a[1].count)
+          .map(([mood, data]) => ({
+            mood,
+            strength: data.count / data.total,
+            count: data.count,
+          })),
+      }));
 
     // Update or create correlation records in the database
     await Promise.all(

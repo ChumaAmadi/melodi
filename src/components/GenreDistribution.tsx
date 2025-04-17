@@ -13,8 +13,10 @@ import {
   RadialLinearScale,
   PointElement,
   LineElement,
+  Filler,
   ChartData,
 } from 'chart.js';
+import { GENRE_COLORS, CHART_THEME } from '@/lib/constants/colors';
 
 ChartJS.register(
   ArcElement,
@@ -24,6 +26,7 @@ ChartJS.register(
   RadialLinearScale,
   PointElement,
   LineElement,
+  Filler,
   Title,
   Tooltip,
   Legend
@@ -59,18 +62,6 @@ interface GenreDistributionProps {
   correlationData?: GenreCorrelation[];
 }
 
-const GENRE_COLORS = {
-  pop: '#FF6B6B',
-  rock: '#4ECDC4',
-  hiphop: '#45B7D1',
-  electronic: '#96CEB4',
-  jazz: '#FFEEAD',
-  classical: '#D4A5A5',
-  indie: '#9B5DE5',
-  rnb: '#F15BB5',
-  other: '#808080'
-};
-
 export default function GenreDistribution({ data = [], timelineData, correlationData }: GenreDistributionProps) {
   // Add debug logging
   console.log('Genre Distribution Data:', {
@@ -93,7 +84,10 @@ export default function GenreDistribution({ data = [], timelineData, correlation
     datasets: [
       {
         data: data.map(item => item.count),
-        backgroundColor: data.map(item => item.color || GENRE_COLORS.other),
+        backgroundColor: data.map(item => {
+          const normalizedGenre = item.name.toLowerCase().trim();
+          return GENRE_COLORS[normalizedGenre as keyof typeof GENRE_COLORS] || GENRE_COLORS.other;
+        }),
         borderColor: 'rgba(255, 255, 255, 0.5)',
         borderWidth: 1,
       },
@@ -108,10 +102,10 @@ export default function GenreDistribution({ data = [], timelineData, correlation
         position: 'right' as const,
         align: 'center' as const,
         labels: {
-          color: 'rgba(255, 255, 255, 0.9)',
+          color: CHART_THEME.text.primary,
           font: {
             size: 13,
-            weight: '500'
+            weight: 700
           },
           padding: 25,
           usePointStyle: true,
@@ -120,15 +114,16 @@ export default function GenreDistribution({ data = [], timelineData, correlation
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        titleColor: '#1a1a1a',
-        bodyColor: '#1a1a1a',
+        backgroundColor: CHART_THEME.tooltip.background,
+        titleColor: CHART_THEME.tooltip.text,
+        bodyColor: CHART_THEME.tooltip.text,
         padding: 12,
-        borderColor: 'rgba(167, 139, 250, 0.5)',
+        borderColor: CHART_THEME.tooltip.border,
         borderWidth: 1,
         callbacks: {
           label: function(context: any) {
-            const percentage = ((context.raw / data.reduce((a, b) => a + b.count, 0)) * 100).toFixed(1);
+            const total = data.reduce((sum, item) => sum + item.count, 0);
+            const percentage = total > 0 ? ((context.raw / total) * 100).toFixed(1) : '0.0';
             return `${context.label}: ${percentage}% (${context.raw} plays)`;
           },
         },
@@ -183,7 +178,7 @@ export default function GenreDistribution({ data = [], timelineData, correlation
                       min: 0,
                       max: 1,
                       grid: {
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: CHART_THEME.grid.color,
                         lineWidth: 1
                       },
                       ticks: {
@@ -191,14 +186,14 @@ export default function GenreDistribution({ data = [], timelineData, correlation
                         stepSize: 0.2,
                       },
                       angleLines: {
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: CHART_THEME.grid.color,
                         lineWidth: 1
                       },
                       pointLabels: {
-                        color: 'rgba(255, 255, 255, 0.85)',
+                        color: CHART_THEME.text.primary,
                         font: {
                           size: 14,
-                          weight: '600'
+                          weight: 700
                         }
                       },
                     },
@@ -207,12 +202,12 @@ export default function GenreDistribution({ data = [], timelineData, correlation
                     legend: {
                       position: 'bottom' as const,
                       labels: {
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: CHART_THEME.text.secondary,
                         boxWidth: 12,
                         padding: 15,
                         font: {
                           size: 12,
-                          weight: '600'
+                          weight: 700
                         }
                       },
                     },
@@ -240,20 +235,20 @@ export default function GenreDistribution({ data = [], timelineData, correlation
                   x: {
                     stacked: true,
                     grid: {
-                      color: 'rgba(255, 255, 255, 0.1)',
+                      color: CHART_THEME.grid.color,
                     },
                     ticks: {
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: CHART_THEME.text.secondary,
                     },
                   },
                   y: {
                     stacked: true,
                     max: 100,
                     grid: {
-                      color: 'rgba(255, 255, 255, 0.1)',
+                      color: CHART_THEME.grid.color,
                     },
                     ticks: {
-                      color: 'rgba(255, 255, 255, 0.7)',
+                      color: CHART_THEME.text.secondary,
                       callback: function(value) {
                         return value + '%';
                       }
@@ -265,13 +260,13 @@ export default function GenreDistribution({ data = [], timelineData, correlation
                     display: true,
                     position: 'top' as const,
                     labels: {
-                      color: 'rgba(255, 255, 255, 0.8)',
+                      color: CHART_THEME.text.secondary,
                     },
                   },
                   tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    titleColor: '#1a1a1a',
-                    bodyColor: '#1a1a1a',
+                    backgroundColor: CHART_THEME.tooltip.background,
+                    titleColor: CHART_THEME.tooltip.text,
+                    bodyColor: CHART_THEME.tooltip.text,
                     callbacks: {
                       label: function(context: any) {
                         return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;

@@ -1,9 +1,14 @@
 import { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeGenre, categorizeGenres, getRelatedGenres } from "./genreMapping";
 
 const BASE_URL = 'https://api.spotify.com/v1';
 
-async function getArtistGenres(artistId: string, accessToken: string): Promise<string[]> {
+async function getAccessToken(session: Session | null): Promise<string | null> {
+  return session?.accessToken || null;
+}
+
+async function getArtistGenres(artistId: string, accessToken: string): Promise<{ mainGenres: string[], subGenres: string[] }> {
   try {
     console.log(`Fetching genres for artist ${artistId}...`);
     const response = await fetch(`${BASE_URL}/artists/${artistId}`, {
@@ -17,11 +22,40 @@ async function getArtistGenres(artistId: string, accessToken: string): Promise<s
     }
 
     const data = await response.json();
-    console.log(`Genres for artist ${data.name}:`, data.genres);
-    return data.genres || [];
+    const spotifyGenres = data.genres || [];
+    console.log(`Raw genres for artist ${data.name}:`, spotifyGenres);
+
+    // If no genres from Spotify, try to infer from artist name or default to rap
+    if (spotifyGenres.length === 0) {
+      console.log(`No genres found for artist ${data.name}, inferring...`);
+      // You can add more artist name checks here
+      if (data.name.toLowerCase().includes('lil') || 
+          data.name.toLowerCase().includes('young') ||
+          data.name.toLowerCase().includes('rapper')) {
+        return { mainGenres: ['rap'], subGenres: ['hip-hop', 'trap'] };
+      }
+    }
+    
+    // Get main genres using our categorization system
+    const mainGenres = categorizeGenres(spotifyGenres);
+    console.log(`Main genres for ${data.name}:`, mainGenres);
+    
+    // Get related genres for the primary genre
+    const primaryGenre = mainGenres[0] || 'rap'; // Default to rap if no genre found
+    const relatedGenres = getRelatedGenres(primaryGenre);
+    
+    // Filter out main genres from related genres to avoid duplication
+    const subGenres = relatedGenres.filter(genre => !mainGenres.includes(normalizeGenre(genre)));
+
+    console.log(`Processed genres for artist ${data.name}:`, {
+      mainGenres,
+      subGenres
+    });
+
+    return { mainGenres, subGenres };
   } catch (error) {
     console.error('Error fetching artist genres:', error);
-    return [];
+    return { mainGenres: ['rap'], subGenres: ['hip-hop'] }; // Default to rap instead of other
   }
 }
 
@@ -31,6 +65,7 @@ async function saveTrackToHistory(track: any, userId: string, playedAt?: string)
       trackName: track.name,
       artist: track.artist,
       genre: track.genre,
+      subGenres: track.subGenres,
       userId: userId,
       playedAt: playedAt
     });
@@ -41,7 +76,11 @@ async function saveTrackToHistory(track: any, userId: string, playedAt?: string)
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        track,
+        track: {
+          ...track,
+          genre: track.genre.toLowerCase().trim(), // Ensure consistent format
+          subGenres: track.subGenres?.map((g: string) => g.toLowerCase().trim()) || []
+        },
         userId,
         playedAt
       })
@@ -55,17 +94,11 @@ async function saveTrackToHistory(track: any, userId: string, playedAt?: string)
     console.log('Successfully saved track:', {
       name: savedTrack.trackName,
       artist: savedTrack.artistName,
-      genre: savedTrack.genre
+      genre: savedTrack.genre,
+      subGenres: savedTrack.subGenres
     });
   } catch (error) {
-    console.error('Error saving track to history:', {
-      error,
-      track: {
-        name: track.name,
-        artist: track.artist,
-        genre: track.genre
-      }
-    });
+    console.error('Error saving track to history:', error);
   }
 }
 
@@ -110,8 +143,7 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
           id: track.id
         });
         
-        const genres = await getArtistGenres(track.artists[0].id, session.accessToken as string);
-        const mainGenre = genres[0] || 'other'; // Use first genre as main genre
+        const { mainGenres, subGenres } = await getArtistGenres(track.artists[0].id, session.accessToken as string);
 
         const processedTrack = {
           id: track.id,
@@ -120,19 +152,17 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
           album: track.album.name,
           albumArt: track.album.images[0]?.url,
           playCount: 0,
-          genre: mainGenre,
-          subGenres: genres.slice(1),
+          genre: mainGenres[0] || 'other',
+          subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
         };
 
         try {
-          // Save to listening history
           await saveTrackToHistory(processedTrack, session.user.id);
         } catch (saveError) {
           console.error('Failed to save track:', {
             track: processedTrack,
             error: saveError
           });
-          // Continue processing other tracks even if one fails to save
         }
 
         return processedTrack;
@@ -174,8 +204,7 @@ export async function getRecentlyPlayed(session: Session | null) {
     // Fetch genres for each track's artist
     const tracksWithGenres = await Promise.all(
       data.items.map(async (item: any) => {
-        const genres = await getArtistGenres(item.track.artists[0].id, session.accessToken as string);
-        const mainGenre = genres[0] || 'other'; // Use first genre as main genre
+        const { mainGenres, subGenres } = await getArtistGenres(item.track.artists[0].id, session.accessToken as string);
 
         const processedTrack = {
           id: item.track.id,
@@ -184,11 +213,11 @@ export async function getRecentlyPlayed(session: Session | null) {
           album: item.track.album.name,
           albumArt: item.track.album.images[0]?.url,
           playedAt: item.played_at,
-          genre: mainGenre,
-          subGenres: genres.slice(1),
+          genre: mainGenres[0] || 'other',
+          subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
         };
 
-        // Save to listening history
+        // Save to listening history with enhanced genre information
         await saveTrackToHistory(processedTrack, session.user.id, item.played_at);
 
         return processedTrack;
@@ -202,80 +231,12 @@ export async function getRecentlyPlayed(session: Session | null) {
   }
 }
 
-interface TopItem {
-  id: string;
-  name: string;
-  image: string;
-  count: number;
-}
-
-export function processRecentlyPlayed(tracks: any[]) {
-  const now = new Date();
-  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  // Filter tracks from the last 7 days
-  const recentTracks = tracks.filter(track => 
-    new Date(track.playedAt) > oneWeekAgo
-  );
-
-  // Process albums
-  const albumsMap = new Map<string, TopItem>();
-  recentTracks.forEach(track => {
-    const key = `${track.album}-${track.artist}`;
-    if (!albumsMap.has(key)) {
-      albumsMap.set(key, {
-        id: key,
-        name: track.album,
-        image: track.albumArt,
-        count: 1
-      });
-    } else {
-      const album = albumsMap.get(key)!;
-      album.count++;
-    }
-  });
-
-  // Process artists
-  const artistsMap = new Map<string, TopItem>();
-  recentTracks.forEach(track => {
-    if (!artistsMap.has(track.artist)) {
-      artistsMap.set(track.artist, {
-        id: track.artist,
-        name: track.artist,
-        image: track.albumArt,
-        count: 1
-      });
-    } else {
-      const artist = artistsMap.get(track.artist)!;
-      artist.count++;
-      // Update artist image if not set
-      if (!artist.image) {
-        artist.image = track.albumArt;
-      }
-    }
-  });
-
-  // Convert to arrays and sort by count
-  const topAlbums = Array.from(albumsMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  const topArtists = Array.from(artistsMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  return {
-    topAlbums,
-    topArtists,
-    recentTracks
-  };
-}
-
 export type TopItem = {
   id: string;
   name: string;
   image?: string;
   count: number;
+  artist?: string; // Optional artist field for albums
 };
 
 export type TopPlaylist = {
@@ -316,4 +277,68 @@ export async function getTopPlaylists(session: Session | null): Promise<TopPlayl
     console.error('Error fetching playlists:', error);
     return null;
   }
+}
+
+export function processRecentlyPlayed(tracks: any[]) {
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Filter tracks from the last 7 days
+  const recentTracks = tracks.filter(track => 
+    new Date(track.playedAt) > oneWeekAgo
+  );
+
+  // Process albums
+  const albumsMap = new Map<string, TopItem>();
+  recentTracks.forEach(track => {
+    const key = `${track.album}-${track.artist}`;
+    if (!albumsMap.has(key)) {
+      albumsMap.set(key, {
+        id: key,
+        name: track.album,
+        image: track.albumArt,
+        count: 1,
+        artist: track.artist // Add artist name to album data
+      });
+    } else {
+      const album = albumsMap.get(key)!;
+      album.count++;
+    }
+  });
+
+  // Process artists
+  const artistsMap = new Map<string, TopItem>();
+  recentTracks.forEach(track => {
+    if (!artistsMap.has(track.artist)) {
+      artistsMap.set(track.artist, {
+        id: track.artist,
+        name: track.artist,
+        image: track.albumArt,
+        count: 1
+      });
+    } else {
+      const artist = artistsMap.get(track.artist)!;
+      artist.count++;
+      // Update artist image if not set
+      if (!artist.image) {
+        artist.image = track.albumArt;
+      }
+    }
+  });
+
+  // Convert to arrays and sort by count
+  const topAlbums = Array.from(albumsMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10); // Show top 10 albums instead of 5
+
+  const topArtists = Array.from(artistsMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return {
+    topAlbums,
+    topArtists,
+    recentTracks,
+    timestamp: now.getTime() // Add timestamp for cache validation
+  };
 } 

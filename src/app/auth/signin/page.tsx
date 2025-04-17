@@ -200,6 +200,19 @@ export default function SignIn() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleSpotifySignIn = async () => {
+    try {
+      console.log('Starting Spotify sign in...');
+      const result = await signIn("spotify", { 
+        callbackUrl: "/",
+        redirect: true
+      });
+      console.log('Sign in result:', result);
+    } catch (error) {
+      console.error('Spotify sign in error:', error);
+    }
+  };
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900">
@@ -294,7 +307,7 @@ export default function SignIn() {
           
           {/* Enhanced Sign In Button */}
           <motion.button
-            onClick={() => signIn("spotify", { callbackUrl: "/" })}
+            onClick={handleSpotifySignIn}
             className="group relative w-full sm:w-auto min-w-[260px] py-4 px-8 bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 text-white font-semibold text-lg rounded-xl overflow-hidden"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

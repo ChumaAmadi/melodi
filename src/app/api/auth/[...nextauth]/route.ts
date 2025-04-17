@@ -20,6 +20,9 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.picture as string;
         session.accessToken = token.accessToken as string;
       }
       return session;
@@ -28,10 +31,13 @@ const handler = NextAuth({
       // Initial sign in
       if (account && user) {
         return {
+          ...token,
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
           accessTokenExpires: account.expires_at! * 1000,
-          user,
+          name: user.name,
+          email: user.email,
+          picture: user.image,
         };
       }
 
@@ -41,7 +47,11 @@ const handler = NextAuth({
       }
 
       // Access token has expired, refresh it
-      return await refreshAccessToken(token);
+      const refreshedToken = await refreshAccessToken(token);
+      return {
+        ...token,
+        ...refreshedToken,
+      };
     },
     async redirect({ url, baseUrl }) {
       // Always redirect to the dashboard after sign in

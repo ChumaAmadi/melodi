@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { generateMoodAnalysis } from '@/lib/deepseek';
 
@@ -7,8 +8,8 @@ import { generateMoodAnalysis } from '@/lib/deepseek';
 export const dynamic = 'force-dynamic';
 
 // GET /api/mood-analysis
-export async function GET(req: Request) {
-  const session = await auth();
+export async function GET() {
+  const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,9 +89,12 @@ function processMoodAnalysis(analysis: string, entries: any[]) {
   // Default mood data structure with all zeros
   const moodData = {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    nostalgic: [0, 0, 0, 0, 0, 0, 0],
+    happy: [0, 0, 0, 0, 0, 0, 0],
     calm: [0, 0, 0, 0, 0, 0, 0],
-    energetic: [0, 0, 0, 0, 0, 0, 0],
+    sad: [0, 0, 0, 0, 0, 0, 0],
+    frustrated: [0, 0, 0, 0, 0, 0, 0],
+    reflective: [0, 0, 0, 0, 0, 0, 0],
+    inspired: [0, 0, 0, 0, 0, 0, 0],
   };
 
   // If we have entries, use them to populate the mood data
@@ -98,9 +102,12 @@ function processMoodAnalysis(analysis: string, entries: any[]) {
     // Create counters for each day to handle multiple entries
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     const tempMoodData = {
-      nostalgic: [0, 0, 0, 0, 0, 0, 0],
+      happy: [0, 0, 0, 0, 0, 0, 0],
       calm: [0, 0, 0, 0, 0, 0, 0],
-      energetic: [0, 0, 0, 0, 0, 0, 0],
+      sad: [0, 0, 0, 0, 0, 0, 0],
+      frustrated: [0, 0, 0, 0, 0, 0, 0],
+      reflective: [0, 0, 0, 0, 0, 0, 0],
+      inspired: [0, 0, 0, 0, 0, 0, 0],
     };
 
     entries.forEach(entry => {
@@ -110,45 +117,57 @@ function processMoodAnalysis(analysis: string, entries: any[]) {
       dayCounts[adjustedDayIndex]++;
       
       // Add mood values based on the selected mood
-      switch (entry.selectedMood.toLowerCase()) {
+      switch (entry.selectedMood?.toLowerCase()) {
         case 'happy':
-          tempMoodData.energetic[adjustedDayIndex] += 85;
-          tempMoodData.calm[adjustedDayIndex] += 40;
+          tempMoodData.happy[adjustedDayIndex] += 90;
+          tempMoodData.inspired[adjustedDayIndex] += 40;
+          tempMoodData.calm[adjustedDayIndex] += 30;
           break;
         case 'calm':
-          tempMoodData.calm[adjustedDayIndex] += 95;
-          tempMoodData.nostalgic[adjustedDayIndex] += 30;
+          tempMoodData.calm[adjustedDayIndex] += 90;
+          tempMoodData.reflective[adjustedDayIndex] += 40;
+          tempMoodData.sad[adjustedDayIndex] += 20;
           break;
         case 'sad':
-          tempMoodData.nostalgic[adjustedDayIndex] += 80;
-          tempMoodData.calm[adjustedDayIndex] += 20;
+          tempMoodData.sad[adjustedDayIndex] += 80;
+          tempMoodData.reflective[adjustedDayIndex] += 40;
+          tempMoodData.frustrated[adjustedDayIndex] += 20;
           break;
         case 'frustrated':
-          tempMoodData.energetic[adjustedDayIndex] += 75;
-          tempMoodData.nostalgic[adjustedDayIndex] += 15;
+          tempMoodData.frustrated[adjustedDayIndex] += 80;
+          tempMoodData.sad[adjustedDayIndex] += 30;
+          tempMoodData.inspired[adjustedDayIndex] += 20;
           break;
         case 'reflective':
-          tempMoodData.nostalgic[adjustedDayIndex] += 90;
-          tempMoodData.calm[adjustedDayIndex] += 60;
+          tempMoodData.reflective[adjustedDayIndex] += 90;
+          tempMoodData.calm[adjustedDayIndex] += 50;
+          tempMoodData.sad[adjustedDayIndex] += 30;
           break;
         case 'inspired':
-          tempMoodData.energetic[adjustedDayIndex] += 90;
-          tempMoodData.nostalgic[adjustedDayIndex] += 45;
+          tempMoodData.inspired[adjustedDayIndex] += 90;
+          tempMoodData.happy[adjustedDayIndex] += 60;
+          tempMoodData.reflective[adjustedDayIndex] += 30;
           break;
         default:
           // Default values if mood not recognized
-          tempMoodData.calm[adjustedDayIndex] += 33;
-          tempMoodData.energetic[adjustedDayIndex] += 33;
-          tempMoodData.nostalgic[adjustedDayIndex] += 33;
+          tempMoodData.calm[adjustedDayIndex] += 20;
+          tempMoodData.happy[adjustedDayIndex] += 20;
+          tempMoodData.reflective[adjustedDayIndex] += 20;
+          tempMoodData.sad[adjustedDayIndex] += 20;
+          tempMoodData.frustrated[adjustedDayIndex] += 20;
+          tempMoodData.inspired[adjustedDayIndex] += 20;
       }
     });
 
     // Calculate averages for days with multiple entries
     for (let i = 0; i < 7; i++) {
       if (dayCounts[i] > 0) {
-        moodData.nostalgic[i] = Math.round(tempMoodData.nostalgic[i] / dayCounts[i]);
+        moodData.happy[i] = Math.round(tempMoodData.happy[i] / dayCounts[i]);
         moodData.calm[i] = Math.round(tempMoodData.calm[i] / dayCounts[i]);
-        moodData.energetic[i] = Math.round(tempMoodData.energetic[i] / dayCounts[i]);
+        moodData.sad[i] = Math.round(tempMoodData.sad[i] / dayCounts[i]);
+        moodData.frustrated[i] = Math.round(tempMoodData.frustrated[i] / dayCounts[i]);
+        moodData.reflective[i] = Math.round(tempMoodData.reflective[i] / dayCounts[i]);
+        moodData.inspired[i] = Math.round(tempMoodData.inspired[i] / dayCounts[i]);
       }
     }
   }
@@ -156,29 +175,41 @@ function processMoodAnalysis(analysis: string, entries: any[]) {
   // If we have AI analysis and entries, try to enhance the mood data
   if (analysis && entries.length > 0) {
     try {
-      // Look for patterns like "Monday: Nostalgic: 70%, Calm: 30%, Energetic: 40%"
-      const dayPattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*Nostalgic:\s*(\d+)%,\s*Calm:\s*(\d+)%,\s*Energetic:\s*(\d+)%/gi;
+      // Look for patterns like "Monday: Happy: 70%, Calm: 30%, Sad: 40%, Frustrated: 20%, Reflective: 60%, Inspired: 50%"
+      const dayPattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*Happy:\s*(\d+)%,\s*Calm:\s*(\d+)%,\s*Sad:\s*(\d+)%,\s*Frustrated:\s*(\d+)%,\s*Reflective:\s*(\d+)%,\s*Inspired:\s*(\d+)%/gi;
       let match;
       
       while ((match = dayPattern.exec(analysis)) !== null) {
         const day = match[1];
-        const nostalgic = parseInt(match[2], 10);
+        const happy = parseInt(match[2], 10);
         const calm = parseInt(match[3], 10);
-        const energetic = parseInt(match[4], 10);
+        const sad = parseInt(match[4], 10);
+        const frustrated = parseInt(match[5], 10);
+        const reflective = parseInt(match[6], 10);
+        const inspired = parseInt(match[7], 10);
         
         // Map day name to index (0 = Monday, 6 = Sunday)
         const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(day);
         
         if (dayIndex !== -1) {
           // Only update if we don't already have data for this day from journal entries
-          if (moodData.nostalgic[dayIndex] === 0) {
-            moodData.nostalgic[dayIndex] = nostalgic;
+          if (moodData.happy[dayIndex] === 0) {
+            moodData.happy[dayIndex] = happy;
           }
           if (moodData.calm[dayIndex] === 0) {
             moodData.calm[dayIndex] = calm;
           }
-          if (moodData.energetic[dayIndex] === 0) {
-            moodData.energetic[dayIndex] = energetic;
+          if (moodData.sad[dayIndex] === 0) {
+            moodData.sad[dayIndex] = sad;
+          }
+          if (moodData.frustrated[dayIndex] === 0) {
+            moodData.frustrated[dayIndex] = frustrated;
+          }
+          if (moodData.reflective[dayIndex] === 0) {
+            moodData.reflective[dayIndex] = reflective;
+          }
+          if (moodData.inspired[dayIndex] === 0) {
+            moodData.inspired[dayIndex] = inspired;
           }
         }
       }

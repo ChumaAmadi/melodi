@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { generateMoodAnalysis, generateJournalEntry } from '@/lib/deepseek';
 
@@ -7,8 +8,8 @@ import { generateMoodAnalysis, generateJournalEntry } from '@/lib/deepseek';
 export const dynamic = 'force-dynamic';
 
 // GET /api/journal
-export async function GET(req: Request) {
-  const session = await auth();
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,8 +45,8 @@ export async function GET(req: Request) {
 }
 
 // POST /api/journal
-export async function POST(req: Request) {
-  const session = await auth();
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,19 +62,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { content, selectedMood } = await req.json();
-    if (!content) {
+    const data = await request.json();
+    if (!data.content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
 
-    if (!selectedMood) {
+    if (!data.selectedMood) {
       return NextResponse.json({ error: "Mood selection is required" }, { status: 400 });
     }
 
     const entry = await prisma.journalEntry.create({
       data: {
-        content,
-        selectedMood,
+        ...data,
         userId: user.id,
         weekOf: new Date(),
       },

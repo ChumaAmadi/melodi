@@ -8,9 +8,10 @@ import Link from 'next/link';
 interface ProfileMenuProps {
   userName: string;
   userImage: string;
+  isWhiteHeader?: boolean;
 }
 
-export default function ProfileMenu({ userName, userImage }: ProfileMenuProps) {
+export default function ProfileMenu({ userName, userImage, isWhiteHeader = false }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -38,13 +39,13 @@ export default function ProfileMenu({ userName, userImage }: ProfileMenuProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-3 focus:outline-none group"
       >
-        <span className="text-sm text-white group-hover:text-purple-200 transition-colors">{userName}</span>
+        <span className={`text-sm ${isWhiteHeader ? 'text-gray-800 group-hover:text-purple-700' : 'text-purple-300 group-hover:text-purple-200'} transition-colors`}>{userName}</span>
         <Image
           src={userImage}
           alt={userName}
           width={40}
           height={40}
-          className="rounded-full ring-2 ring-white/10 group-hover:ring-purple-400 transition-all transform group-hover:scale-105 duration-200"
+          className={`rounded-full ${isWhiteHeader ? 'ring-2 ring-gray-200 group-hover:ring-purple-400' : 'ring-2 ring-white/10 group-hover:ring-purple-400'} transition-all transform group-hover:scale-105 duration-200`}
         />
       </button>
 

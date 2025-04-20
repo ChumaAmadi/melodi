@@ -8,6 +8,25 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { track, userId, playedAt } = body;
 
+    if (!track?.name || !track?.artist) {
+      console.error('Invalid track data:', track);
+      return NextResponse.json(
+        { error: 'Invalid track data' },
+        { status: 400 }
+      );
+    }
+
+    // Ensure genre is set
+    const genre = track.genre || 'other';
+    const subGenres = Array.isArray(track.subGenres) ? track.subGenres : [];
+
+    console.log('Saving track with data:', {
+      trackName: track.name,
+      artistName: track.artist,
+      genre,
+      subGenres
+    });
+
     // Check if track already exists for this time
     const existingTrack = await prisma.listeningHistory.findFirst({
       where: {
@@ -18,26 +37,40 @@ export async function POST(request: Request) {
     });
 
     if (existingTrack) {
-      return NextResponse.json({ message: 'Track already exists' });
+      return NextResponse.json({
+        trackName: existingTrack.trackName,
+        artistName: existingTrack.artistName,
+        genre: existingTrack.genre,
+        subGenres: existingTrack.subGenres
+      });
     }
 
     const savedTrack = await prisma.listeningHistory.create({
       data: {
         userId,
-        trackId: track.id,
+        trackId: track.id || 'unknown',
         trackName: track.name,
         artistName: track.artist,
-        albumName: track.album,
+        albumName: track.album || 'Unknown Album',
         playedAt: playedAt ? new Date(playedAt) : new Date(),
         duration: 0,
-        genre: track.genre,
-        subGenres: track.subGenres || [],
+        genre,
+        subGenres,
       },
     });
 
-    return NextResponse.json(savedTrack);
+    // Return a clean response with just the needed fields
+    return NextResponse.json({
+      trackName: savedTrack.trackName,
+      artistName: savedTrack.artistName,
+      genre: savedTrack.genre,
+      subGenres: savedTrack.subGenres
+    });
   } catch (error) {
     console.error('Error saving track:', error);
-    return NextResponse.json({ error: 'Failed to save track' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to save track', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 } 

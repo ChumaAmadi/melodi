@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authConfig } from '@/auth.config';
 
 const GENIUS_API_KEY = process.env.GENIUS_API_KEY;
 const GENIUS_BASE_URL = 'https://api.genius.com';
@@ -50,8 +51,8 @@ async function getLyrics(url: string) {
   }
 }
 
-export async function GET(request: Request) {
-  const session = await auth();
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

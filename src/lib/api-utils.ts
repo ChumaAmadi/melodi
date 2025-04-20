@@ -8,47 +8,42 @@ const USER_AGENT = 'Melodi/1.0.0';
 
 // Debug environment variables
 console.log('Environment check:', {
-  hasLastFmKey: !!process.env.NEXT_PUBLIC_LASTFM_API_KEY,
-  hasGeniusKey: !!process.env.NEXT_PUBLIC_GENIUS_API_KEY,
+  hasLastFmKey: !!process.env.LASTFM_API_KEY,
+  hasGeniusKey: !!process.env.GENIUS_API_KEY,
 });
 
-export async function makeLastfmRequest(endpoint: string, params: Record<string, string>) {
-  const apiKey = process.env.NEXT_PUBLIC_LASTFM_API_KEY;
-  
-  if (!apiKey) {
-    console.error('Last.fm API key missing. Available env vars:', Object.keys(process.env));
-    throw new Error('Last.fm API key not configured - Please check your .env file');
-  }
+// Get Last.fm API key from environment
+const LASTFM_API_KEY = process.env.LASTFM_API_KEY;
 
+interface LastFMTag {
+  name: string;
+  url: string;
+}
+
+/**
+ * Make a request to the Last.fm API with rate limiting
+ */
+export async function makeLastfmRequest(method: string, params: Record<string, string> = {}) {
   await lastfmLimiter.removeTokens(1);
   
-  const queryParams = new URLSearchParams({
-    ...params,
-    api_key: apiKey,
-    format: 'json'
+  // Build URL for our server-side API endpoint
+  const url = new URL('/api/lastfm', window.location.origin);
+  url.searchParams.append('method', method);
+  
+  // Add all params to the URL
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.append(key, value);
   });
-
+  
   try {
-    const response = await fetch(
-      `https://ws.audioscrobbler.com/2.0/?${queryParams.toString()}`,
-      {
-        headers: {
-          'User-Agent': USER_AGENT
-        }
-      }
-    );
+    const response = await fetch(url.toString());
 
     if (!response.ok) {
-      throw new Error(`Last.fm API error: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Last.fm API error: ${response.status}`);
     }
 
     const data = await response.json();
-    
-    // Check for Last.fm API errors in response
-    if (data.error) {
-      throw new Error(`Last.fm API error: ${data.message || data.error}`);
-    }
-
     return data;
   } catch (error) {
     console.error('Last.fm API request failed:', error);
@@ -57,7 +52,7 @@ export async function makeLastfmRequest(endpoint: string, params: Record<string,
 }
 
 export async function makeGeniusRequest(endpoint: string, params?: Record<string, string>) {
-  const apiKey = process.env.NEXT_PUBLIC_GENIUS_API_KEY;
+  const apiKey = process.env.GENIUS_API_KEY;
   
   if (!apiKey) {
     console.error('Genius API key missing. Available env vars:', Object.keys(process.env));
@@ -97,29 +92,33 @@ export async function makeGeniusRequest(endpoint: string, params?: Record<string
   }
 }
 
-export async function getTrackTags(artist: string, track: string) {
+/**
+ * Get tags for a track from Last.fm
+ */
+export async function getTrackTags(artist: string, track: string): Promise<LastFMTag[]> {
   try {
-    const data = await makeLastfmRequest('', {
-      method: 'track.getTopTags',
-      artist,
-      track
+    const data = await makeLastfmRequest('track.getInfo', {
+      artist: artist,
+      track: track
     });
     
-    return data.toptags?.tag || [];
+    return data?.track?.toptags?.tag || [];
   } catch (error) {
     console.error('Error fetching track tags:', error);
     return [];
   }
 }
 
-export async function getArtistTags(artist: string) {
+/**
+ * Get tags for an artist from Last.fm
+ */
+export async function getArtistTags(artist: string): Promise<LastFMTag[]> {
   try {
-    const data = await makeLastfmRequest('', {
-      method: 'artist.getTopTags',
-      artist
+    const data = await makeLastfmRequest('artist.getTopTags', {
+      artist: artist
     });
     
-    return data.toptags?.tag || [];
+    return data?.toptags?.tag || [];
   } catch (error) {
     console.error('Error fetching artist tags:', error);
     return [];

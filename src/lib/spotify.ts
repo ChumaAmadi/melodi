@@ -1,7 +1,7 @@
 import { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeGenre, categorizeGenres, getRelatedGenres } from "./genreMapping";
-import { enhancedGenreDetection } from './genreDetection';
+import { detectArtistGenres } from './genre-detection';
 
 const BASE_URL = 'https://api.spotify.com/v1';
 
@@ -9,17 +9,24 @@ async function getAccessToken(session: Session | null): Promise<string | null> {
   return session?.accessToken || null;
 }
 
-async function getArtistGenres(artistId: string, accessToken: string, artistName: string): Promise<{ mainGenres: string[], subGenres: string[] }> {
+async function getArtistGenres(artistId: string, accessToken: string, artistName: string, trackName?: string): Promise<{ mainGenres: string[], subGenres: string[] }> {
   try {
-    console.log(`Getting genres for artist: ${artistName}`);
+    if (!artistName) {
+      console.warn('Missing artist name for genre detection');
+      return { mainGenres: ['other'], subGenres: [] };
+    }
+
+    console.log(`Getting genres for artist: ${artistName}`, {
+      artistId,
+      hasAccessToken: !!accessToken,
+      trackName: trackName || 'N/A'
+    });
     
-    // Skip Spotify genre fetch since it's causing rate limiting issues
-    // Instead, use Last.fm and Genius directly through enhancedGenreDetection
-    return enhancedGenreDetection(
-      '', // track name not needed for artist-level genres
-      artistName,
-      artistId
-    );
+    const genres = await detectArtistGenres(artistName);
+    return {
+      mainGenres: genres.slice(0, 2),
+      subGenres: genres.slice(2)
+    };
   } catch (error) {
     console.error('Error in getArtistGenres:', error);
     return { mainGenres: ['other'], subGenres: [] };
@@ -28,13 +35,25 @@ async function getArtistGenres(artistId: string, accessToken: string, artistName
 
 async function saveTrackToHistory(track: any, userId: string, playedAt?: string) {
   try {
+    if (!track?.name || !track?.artist) {
+      console.error('Invalid track data for saving:', track);
+      return null;
+    }
+
+    // Ensure genre is set
+    const trackData = {
+      ...track,
+      genre: track.genre || 'other',
+      subGenres: Array.isArray(track.subGenres) ? track.subGenres : []
+    };
+
     console.log('Saving track to history:', {
-      trackName: track.name,
-      artist: track.artist,
-      genre: track.genre,
-      subGenres: track.subGenres,
-      userId: userId,
-      playedAt: playedAt
+      trackName: trackData.name,
+      artist: trackData.artist,
+      genre: trackData.genre,
+      subGenres: trackData.subGenres,
+      userId,
+      playedAt
     });
 
     const response = await fetch('/api/spotify/save-track', {
@@ -43,29 +62,35 @@ async function saveTrackToHistory(track: any, userId: string, playedAt?: string)
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        track: {
-          ...track,
-          genre: track.genre.toLowerCase().trim(), // Ensure consistent format
-          subGenres: track.subGenres?.map((g: string) => g.toLowerCase().trim()) || []
-        },
+        track: trackData,
         userId,
         playedAt
       })
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save track');
+      const errorData = await response.json();
+      throw new Error(`Failed to save track: ${errorData.error || response.statusText}`);
     }
 
     const savedTrack = await response.json();
+    
+    if (!savedTrack?.trackName) {
+      console.error('Invalid response from save-track:', savedTrack);
+      return null;
+    }
+
     console.log('Successfully saved track:', {
       name: savedTrack.trackName,
       artist: savedTrack.artistName,
       genre: savedTrack.genre,
       subGenres: savedTrack.subGenres
     });
+
+    return savedTrack;
   } catch (error) {
     console.error('Error saving track to history:', error);
+    return null;
   }
 }
 
@@ -101,24 +126,62 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
       itemCount: data.items.length
     });
 
+    // Get track IDs from the response
+    const trackIds = data.items.map((track: any) => track.id).filter(Boolean);
+    
+    // Fetch play counts from server API
+    let playCountMap = new Map();
+    try {
+      const countResponse = await fetch('/api/spotify/track-counts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ trackIds })
+      });
+      
+      if (countResponse.ok) {
+        const countsData = await countResponse.json();
+        // Convert to Map
+        if (Array.isArray(countsData)) {
+          countsData.forEach(item => {
+            playCountMap.set(item.trackId, item.count);
+          });
+        }
+        console.log('Play count map created with', playCountMap.size, 'entries');
+      }
+    } catch (countError) {
+      console.error('Error fetching play counts:', countError);
+    }
+
     // Fetch genres for each track's artist
     const tracksWithGenres = await Promise.all(
       data.items.map(async (track: any) => {
+        if (!track?.artists?.[0]?.name || !track?.name) {
+          console.warn('Invalid track data:', track);
+          return null;
+        }
+
         console.log('Processing track:', {
           name: track.name,
           artist: track.artists[0].name,
           id: track.id
         });
         
-        const { mainGenres, subGenres } = await getArtistGenres(track.artists[0].id, session.accessToken as string, track.artists[0].name);
+        const { mainGenres, subGenres } = await getArtistGenres(
+          track.artists[0].id,
+          session.accessToken as string,
+          track.artists[0].name,
+          track.name
+        );
 
         const processedTrack = {
-          id: track.id,
+          id: track.id || 'unknown',
           name: track.name,
           artist: track.artists[0].name,
-          album: track.album.name,
-          albumArt: track.album.images[0]?.url,
-          playCount: 0,
+          album: track.album?.name || 'Unknown Album',
+          albumArt: track.album?.images?.[0]?.url,
+          playCount: playCountMap.get(track.id) || 1, // Default to 1 instead of 0 for better UX
           genre: mainGenres[0] || 'other',
           subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
         };
@@ -134,7 +197,7 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
 
         return processedTrack;
       })
-    );
+    ).then(tracks => tracks.filter(Boolean)); // Remove null values
 
     console.log('Processed tracks with genres:', tracksWithGenres.length);
     return tracksWithGenres;
@@ -171,18 +234,24 @@ export async function getRecentlyPlayed(session: Session | null) {
     // Fetch genres for each track's artist
     const tracksWithGenres = await Promise.all(
       data.items.map(async (item: any) => {
+        if (!item?.track?.artists?.[0]?.name || !item?.track?.name) {
+          console.warn('Invalid track data:', item);
+          return null;
+        }
+
         const { mainGenres, subGenres } = await getArtistGenres(
           item.track.artists[0].id,
           session.accessToken as string,
-          item.track.artists[0].name // Pass artist name
+          item.track.artists[0].name,
+          item.track.name
         );
 
         const processedTrack = {
-          id: item.track.id,
+          id: item.track.id || 'unknown',
           name: item.track.name,
           artist: item.track.artists[0].name,
-          album: item.track.album.name,
-          albumArt: item.track.album.images[0]?.url,
+          album: item.track.album?.name || 'Unknown Album',
+          albumArt: item.track.album?.images?.[0]?.url,
           playedAt: item.played_at,
           genre: mainGenres[0] || 'other',
           subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
@@ -193,7 +262,7 @@ export async function getRecentlyPlayed(session: Session | null) {
 
         return processedTrack;
       })
-    );
+    ).then(tracks => tracks.filter(Boolean)); // Remove null values
 
     return tracksWithGenres;
   } catch (error) {

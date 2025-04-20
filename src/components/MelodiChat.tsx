@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 
 interface MelodiChatProps {
-  userName?: string;
-  journalEntries?: any[];
-  listeningHistory?: any[];
-  dateRange?: string;
+  userName: string;
+  journalEntries: any[];
+  listeningHistory: any[];
+  dateRange: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface ChatMessage {
@@ -21,10 +23,12 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
   journalEntries = [],
   listeningHistory = [],
   dateRange,
+  isOpen,
+  onClose,
 }) => {
   const [greeting, setGreeting] = useState('');
   const [insight, setInsight] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(isOpen || false);
   const [input, setInput] = useState('');
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +39,13 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
     generateGreeting();
     generateInsight();
   }, [userName, journalEntries, listeningHistory]);
+
+  // Update internal state when isOpen prop changes
+  useEffect(() => {
+    if (isOpen !== undefined) {
+      setIsChatOpen(isOpen);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isChatOpen && chat.length === 0) {
@@ -148,12 +159,22 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
     await fetchMelodiReply(newChat, input);
   };
 
+  const toggleChat = () => {
+    const newState = !isChatOpen;
+    setIsChatOpen(newState);
+    
+    // Call onClose when closing the chat
+    if (!newState && onClose) {
+      onClose();
+    }
+  };
+
   return (
     <>
       {/* Chat widget button */}
       <button
         className="fixed bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg focus:outline-none z-20 transition-transform hover:scale-105"
-        onClick={() => setIsChatOpen(true)}
+        onClick={toggleChat}
         aria-label="Open Melodi Chat"
       >
         <svg 
@@ -210,7 +231,7 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setIsChatOpen(false)}
+                onClick={toggleChat}
                 className="text-gray-500 hover:text-gray-700 focus:outline-none"
                 aria-label="Close chat"
               >

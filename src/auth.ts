@@ -10,7 +10,9 @@ declare module "next-auth" {
       image?: string | null;
     };
     accessToken?: string;
+    expires: string;
   }
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig); 
+const handler = NextAuth(authConfig);
+export default handler; 

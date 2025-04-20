@@ -205,9 +205,12 @@ export default function SignIn() {
       console.log('Starting Spotify sign in...');
       const result = await signIn("spotify", { 
         callbackUrl: "/",
-        redirect: true
+        redirect: true,
       });
-      console.log('Sign in result:', result);
+      
+      if (result?.error) {
+        console.error('Spotify sign in error:', result.error);
+      }
     } catch (error) {
       console.error('Spotify sign in error:', error);
     }

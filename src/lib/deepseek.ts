@@ -45,12 +45,16 @@ export async function generateMoodAnalysis(
       Provide a thoughtful, empathetic analysis of what this data suggests about their emotional journey.
       Focus on patterns and potential emotional needs they might be expressing through their music choices and journal entries.
       
-      Specifically, identify trends in these three mood categories:
-      1. Nostalgic - feelings of longing, reminiscence, or connection to the past
-      2. Calm - feelings of peace, relaxation, or contentment
-      3. Energetic - feelings of excitement, motivation, or high activity
+      Specifically, identify trends in these six mood categories:
+      1. Happy - feelings of joy, contentment, and general positivity
+      2. Calm - feelings of peace, relaxation, or tranquility
+      3. Sad - feelings of melancholy, grief, or emotional weight
+      4. Frustrated - feelings of irritation, anger, or being stuck
+      5. Reflective - feelings of contemplation, introspection, or deep thinking
+      6. Inspired - feelings of motivation, creativity, or excitement about possibilities
       
       For each day of the week (Monday through Sunday), estimate the percentage (0-100) for each mood category.
+      Keep your response concise and personalized, under 250 words.
     `;
     
     // Check if we have a valid API key
@@ -105,6 +109,7 @@ export async function generateJournalEntry(
       - End with a positive, encouraging note
       
       Write in a warm, conversational tone as if you're a supportive friend who understands them through their music.
+      Keep your response concise, under 100 words.
     `;
     
     // Call DeepSeek AI API
@@ -117,7 +122,7 @@ export async function generateJournalEntry(
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 1000
+        max_tokens: 500
       },
       {
         headers: {
@@ -131,5 +136,66 @@ export async function generateJournalEntry(
   } catch (error) {
     console.error('Error generating journal entry:', error);
     return 'Unable to generate journal entry at this time.';
+  }
+}
+
+// Generate a short insight for the dashboard header
+export async function generateHeaderInsight(moodAnalysis: string): Promise<string> {
+  try {
+    const prompt = `
+      Based on the following mood analysis:
+      
+      ${moodAnalysis}
+      
+      Create a personalized welcome message that feels like it's coming directly from Melodi based on the user's music listening habits and journal entries. 
+      
+      The message should:
+      - Begin with a personalized greeting
+      - Reference a specific insight about their mood or music taste 
+      - Be warm and conversational in tone
+      - Feel tailored to their current emotional state
+      - Be 15-20 words maximum
+      - End with an ellipsis (...) to suggest there's more to explore
+      
+      Examples:
+      - "Welcome back, your reflective jazz choices suggest you're in a thoughtful mood today..."
+      - "Your upbeat playlist matches your journaled happiness this week..."
+      - "We notice your music getting more energetic as your mood improves..."
+    `;
+    
+    // Call DeepSeek AI API
+    const response = await axios.post<DeepSeekResponse>(
+      'https://api.deepseek.com/v1/chat/completions',
+      {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'You are Melodi, a personal music and mood companion that speaks in a warm, friendly tone.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 100
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        }
+      }
+    );
+    
+    return response.data.choices[0].text.trim();
+  } catch (error) {
+    console.error('Error generating header insight:', error);
+    // Fallback messages if DeepSeek API fails
+    const fallbackMessages = [
+      "Welcome back! Your music tastes are evolving in interesting ways...",
+      "We've missed your unique musical journey. Ready to explore more?...",
+      "Your playlist tells a story that we're excited to help you discover...",
+      "Your musical choices reveal fascinating patterns about your mood...",
+      "Welcome to Melodi, where your music and mood create a unique story..."
+    ];
+    
+    // Return a random fallback message
+    return fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
   }
 } 

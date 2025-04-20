@@ -1,17 +1,28 @@
 'use client';
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getTopTracks, getRecentlyPlayed, processRecentlyPlayed, getTopPlaylists } from "@/lib/spotify";
 import MoodTimeline from "./MoodTimeline";
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import MelodiChat from './MelodiChat';
 import GenreDistribution from './GenreDistribution';
 import ProfileMenu from './ProfileMenu';
+import InsightHeader from './InsightHeader';
 import { TopPlaylist } from '@/lib/spotify';
 import { MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { Doughnut } from "react-chartjs-2";
+import { generateHeaderInsight } from "@/lib/deepseek";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface Track {
   id: string;
@@ -21,6 +32,7 @@ interface Track {
   albumArt: string;
   playCount?: number;
   playedAt?: string;
+  genre?: string;
 }
 
 interface TopItem {
@@ -33,9 +45,12 @@ interface TopItem {
 
 interface MoodData {
   labels: string[];
-  nostalgic: number[];
+  happy: number[];
   calm: number[];
-  energetic: number[];
+  sad: number[];
+  frustrated: number[];
+  reflective: number[];
+  inspired: number[];
 }
 
 interface GenreData {
@@ -44,27 +59,79 @@ interface GenreData {
   color: string;
 }
 
+interface DashboardProps {
+  listeningHistory?: Track[];
+}
+
 const REFRESH_INTERVAL = 30000; // Refresh every 30 seconds
 
-export default function Dashboard() {
+export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   const { data: session } = useSession();
+  const [currentHistory, setCurrentHistory] = useState<Track[]>(listeningHistory);
   const [topTracks, setTopTracks] = useState<Track[]>([]);
   const [topAlbums, setTopAlbums] = useState<TopItem[]>([]);
   const [topArtists, setTopArtists] = useState<TopItem[]>([]);
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
-  const [listeningHistory, setListeningHistory] = useState<any[]>([]);
   const [topPlaylists, setTopPlaylists] = useState<TopPlaylist[]>([]);
-  const [genreData, setGenreData] = useState<{ genreDistribution: GenreData[], timelineData: any, correlationData: any }>({
-    genreDistribution: [],
-    timelineData: null,
-    correlationData: null
+  const [genreData, setGenreData] = useState<{ 
+    genreDistribution: GenreData[],
+    correlationData: { genre: string; moods: { mood: string; strength: number; count: number }[] }[]
+  }>({
+    genreDistribution: [
+      { name: 'pop', count: 1, color: 'rgba(255, 92, 168, 0.85)' },
+      { name: 'rock', count: 1, color: 'rgba(164, 182, 255, 0.85)' },
+      { name: 'electronic', count: 1, color: 'rgba(46, 254, 200, 0.85)' }
+    ],
+    correlationData: [
+      {
+        genre: 'pop',
+        moods: [
+          { mood: 'Happy', strength: 0.7, count: 1 },
+          { mood: 'Calm', strength: 0.4, count: 1 },
+          { mood: 'Sad', strength: 0.1, count: 1 },
+          { mood: 'Frustrated', strength: 0.1, count: 1 },
+          { mood: 'Reflective', strength: 0.3, count: 1 },
+          { mood: 'Inspired', strength: 0.6, count: 1 }
+        ]
+      },
+      {
+        genre: 'rock',
+        moods: [
+          { mood: 'Happy', strength: 0.4, count: 1 },
+          { mood: 'Calm', strength: 0.2, count: 1 },
+          { mood: 'Sad', strength: 0.3, count: 1 },
+          { mood: 'Frustrated', strength: 0.6, count: 1 },
+          { mood: 'Reflective', strength: 0.4, count: 1 },
+          { mood: 'Inspired', strength: 0.5, count: 1 }
+        ]
+      },
+      {
+        genre: 'electronic',
+        moods: [
+          { mood: 'Happy', strength: 0.6, count: 1 },
+          { mood: 'Calm', strength: 0.3, count: 1 },
+          { mood: 'Sad', strength: 0.2, count: 1 },
+          { mood: 'Frustrated', strength: 0.2, count: 1 },
+          { mood: 'Reflective', strength: 0.3, count: 1 },
+          { mood: 'Inspired', strength: 0.7, count: 1 }
+        ]
+      }
+    ]
   });
   const [isLoadingMoodData, setIsLoadingMoodData] = useState(true);
   const [moodDataError, setMoodDataError] = useState<string | null>(null);
-  const [isLoadingGenreData, setIsLoadingGenreData] = useState(true);
+  const [isLoadingGenreData, setIsLoadingGenreData] = useState(false);
   const [genreDataError, setGenreDataError] = useState<string | null>(null);
   const [isLoadingTopTracks, setIsLoadingTopTracks] = useState(true);
+  const [isLoadingTopAlbums, setIsLoadingTopAlbums] = useState(true);
   const [topTracksError, setTopTracksError] = useState<string | null>(null);
+  const [topAlbumsError, setTopAlbumsError] = useState<string | null>(null);
+  const [genreDistribution, setGenreDistribution] = useState<GenreData[]>([]);
+  const [genreError, setGenreError] = useState<string | null>(null);
+  const [insight, setInsight] = useState<string>('Discover insights from your music journey...');
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [debugMode, setDebugMode] = useState<boolean>(true);
   
   // Get first name from full name
   const firstName = session?.user?.name?.split(' ')[0] || '';
@@ -77,23 +144,157 @@ export default function Dashboard() {
   
   const [moodData, setMoodData] = useState<MoodData>({
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    nostalgic: [0, 0, 0, 0, 0, 0, 0],
+    happy: [0, 0, 0, 0, 0, 0, 0],
     calm: [0, 0, 0, 0, 0, 0, 0],
-    energetic: [0, 0, 0, 0, 0, 0, 0],
+    sad: [0, 0, 0, 0, 0, 0, 0],
+    frustrated: [0, 0, 0, 0, 0, 0, 0],
+    reflective: [0, 0, 0, 0, 0, 0, 0],
+    inspired: [0, 0, 0, 0, 0, 0, 0],
   });
+
+  // Separate function to fetch genre data with retry logic
+  const fetchGenreData = async (retryCount = 0) => {
+    if (!session) return;
+    
+    try {
+      setIsLoadingGenreData(true);
+      setGenreDataError(null);
+      
+      console.log('Fetching genre distribution data...');
+      const response = await fetch('/api/genre-distribution');
+      
+      if (!response.ok) {
+        // Check for specific error codes
+        if (response.status === 503 || response.status === 504) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Database connection issue. Please try again later.');
+        }
+        throw new Error(`Failed to fetch genre data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Genre distribution API response:', {
+        status: data.status,
+        genreCount: data.genreDistribution?.length || 0,
+        correlationCount: data.correlationData?.length || 0
+      });
+      
+      if (data.status === 'empty') {
+        // Handle empty data case
+        console.log('No genre data available yet:', data.message);
+        // Make sure we have at least default correlation data
+        if (!data.correlationData || data.correlationData.length === 0) {
+          data.correlationData = genreData.correlationData;
+        }
+        setGenreData({
+          genreDistribution: data.genreDistribution || [],
+          correlationData: data.correlationData || genreData.correlationData
+        });
+      } else if (data.error) {
+        // Handle error but with fallback data
+        console.error('Genre data error with fallback:', data.error);
+        setGenreDataError(data.message || 'Unable to load genre distribution data.');
+        if (data.fallbackData) {
+          // Ensure we have correlation data
+          if (!data.fallbackData.correlationData || data.fallbackData.correlationData.length === 0) {
+            data.fallbackData.correlationData = genreData.correlationData;
+          }
+          setGenreData(data.fallbackData);
+        }
+      } else {
+        // Normal success case
+        const responseData = {
+          genreDistribution: data.genreDistribution || [],
+          correlationData: data.correlationData || []
+        };
+        
+        // Ensure we have correlation data
+        if (!responseData.correlationData || responseData.correlationData.length === 0) {
+          responseData.correlationData = genreData.correlationData;
+        }
+        
+        setGenreData(responseData);
+        console.log('Set genre data successfully with correlation data:', responseData.correlationData.length);
+      }
+    } catch (error) {
+      console.error('Error processing genre distribution:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process genre distribution';
+      setGenreDataError(errorMessage);
+      
+      // Implement retry logic for recoverable errors
+      if (retryCount < 2) {
+        console.log(`Retrying genre data fetch (${retryCount + 1}/2)...`);
+        setTimeout(() => {
+          fetchGenreData(retryCount + 1);
+        }, 3000 * (retryCount + 1)); // Exponential backoff
+      }
+    } finally {
+      setIsLoadingGenreData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (debugMode && !isLoadingGenreData) {
+      console.log('Debug mode active, ensuring default data is set');
+      // Force default data in debug mode
+      setGenreData({
+        genreDistribution: [
+          { name: 'pop', count: 10, color: 'rgba(255, 92, 168, 0.85)' },
+          { name: 'rock', count: 8, color: 'rgba(164, 182, 255, 0.85)' },
+          { name: 'electronic', count: 6, color: 'rgba(46, 254, 200, 0.85)' }
+        ],
+        correlationData: [
+          {
+            genre: 'pop',
+            moods: [
+              { mood: 'Happy', strength: 0.7, count: 5 },
+              { mood: 'Calm', strength: 0.4, count: 3 },
+              { mood: 'Sad', strength: 0.1, count: 1 },
+              { mood: 'Frustrated', strength: 0.1, count: 1 },
+              { mood: 'Reflective', strength: 0.3, count: 2 },
+              { mood: 'Inspired', strength: 0.6, count: 4 }
+            ]
+          },
+          {
+            genre: 'rock',
+            moods: [
+              { mood: 'Happy', strength: 0.4, count: 3 },
+              { mood: 'Calm', strength: 0.2, count: 1 },
+              { mood: 'Sad', strength: 0.3, count: 2 },
+              { mood: 'Frustrated', strength: 0.6, count: 4 },
+              { mood: 'Reflective', strength: 0.4, count: 3 },
+              { mood: 'Inspired', strength: 0.5, count: 3 }
+            ]
+          },
+          {
+            genre: 'electronic',
+            moods: [
+              { mood: 'Happy', strength: 0.6, count: 4 },
+              { mood: 'Calm', strength: 0.3, count: 2 },
+              { mood: 'Sad', strength: 0.2, count: 1 },
+              { mood: 'Frustrated', strength: 0.2, count: 1 },
+              { mood: 'Reflective', strength: 0.3, count: 2 },
+              { mood: 'Inspired', strength: 0.7, count: 5 }
+            ]
+          }
+        ]
+      });
+    }
+  }, [debugMode, isLoadingGenreData]);
 
   useEffect(() => {
     async function fetchData() {
       if (session) {
         try {
           setIsLoadingTopTracks(true);
+          setIsLoadingTopAlbums(true);
           setTopTracksError(null);
+          setTopAlbumsError(null);
           
-          const [topTracksData, recentTracksData, journalData, genreDistData, playlistsData] = await Promise.all([
+          const [topTracksData, recentTracksData, journalData, playlistsData] = await Promise.all([
             getTopTracks(session),
             getRecentlyPlayed(session),
             fetch('/api/journal').then(res => res.json()),
-            fetch('/api/genre-distribution').then(res => res.json()),
             getTopPlaylists(session),
           ]);
 
@@ -107,19 +308,23 @@ export default function Dashboard() {
             const processedData = processRecentlyPlayed(recentTracksData);
             setTopAlbums(processedData.topAlbums);
             setTopArtists(processedData.topArtists);
-            setListeningHistory(recentTracksData);
+            setCurrentHistory(recentTracksData);
+          } else {
+            setTopAlbumsError('Unable to load recent tracks. Please try signing out and back in.');
           }
           if (journalData) setJournalEntries(journalData);
-          if (genreDistData) setGenreData(genreDistData);
           if (playlistsData) setTopPlaylists(playlistsData);
+          
+          // Fetch genre data separately to handle errors independently
+          fetchGenreData();
         } catch (error) {
           console.error('Error fetching data:', error);
-          setGenreDataError('Unable to load genre distribution data.');
           setTopTracksError('Unable to load top tracks. Please try signing out and back in.');
+          setTopAlbumsError('Unable to load recent tracks. Please try signing out and back in.');
         } finally {
           setIsLoadingTopTracks(false);
+          setIsLoadingTopAlbums(false);
           setIsLoadingMoodData(false);
-          setIsLoadingGenreData(false);
         }
       }
     }
@@ -144,6 +349,7 @@ export default function Dashboard() {
 
     // Initial fetch
     fetchData();
+    fetchMoodData();
 
     // Set up periodic refresh
     const refreshInterval = setInterval(fetchData, REFRESH_INTERVAL);
@@ -152,10 +358,53 @@ export default function Dashboard() {
     return () => clearInterval(refreshInterval);
   }, [session]);
 
+  const processGenreDistribution = async () => {
+    if (!currentHistory.length) return;
+    
+    // Use the same function for regular and manual updates
+    fetchGenreData();
+  };
+
+  useEffect(() => {
+    if (currentHistory?.length > 0) {
+      processGenreDistribution();
+    }
+  }, [currentHistory]);
+
+  // Fetch insight for header
+  useEffect(() => {
+    async function fetchInsight() {
+      if (journalEntries.length > 0 && currentHistory.length > 0) {
+        try {
+          const response = await fetch('/api/mood-analysis');
+          if (response.ok) {
+            const moodAnalysis = await response.json();
+            // Generate insight from mood analysis
+            const headerInsight = await generateHeaderInsight(JSON.stringify(moodAnalysis));
+            setInsight(headerInsight);
+          }
+        } catch (error) {
+          console.error('Error fetching insight:', error);
+        }
+      }
+    }
+    
+    fetchInsight();
+  }, [journalEntries, currentHistory]);
+
+  const handleChatOpen = () => {
+    setIsChatOpen(true);
+    // Scroll to chat component
+    setTimeout(() => {
+      chatRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Please sign in to access your dashboard.</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+        <p className="text-white/70 mt-4">Gathering your Spotify data...</p>
       </div>
     );
   }
@@ -178,17 +427,25 @@ export default function Dashboard() {
           <ProfileMenu
             userName={session.user.name || ''}
             userImage={session.user.image}
+            isWhiteHeader={false}
           />
         )}
       </header>
 
       <main className="container mx-auto px-6 py-8 space-y-8 relative z-0">
-        <MelodiChat
-          userName={session?.user?.name || ''}
-          journalEntries={journalEntries}
-          listeningHistory={listeningHistory}
-          dateRange={dateRange}
-        />
+        {/* Insight Header */}
+        <InsightHeader insight={insight} onChatOpen={handleChatOpen} />
+        
+        <div ref={chatRef}>
+          <MelodiChat
+            userName={session?.user?.name || ''}
+            journalEntries={journalEntries}
+            listeningHistory={currentHistory}
+            dateRange={dateRange}
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
+          />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
@@ -199,8 +456,9 @@ export default function Dashboard() {
                   <span className="text-sm font-normal text-white/60">{dateRange}</span>
                 </h2>
                 {isLoadingMoodData ? (
-                  <div className="h-[300px] flex items-center justify-center">
+                  <div className="h-[300px] flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                    <p className="text-white/70 mt-4">Analyzing your music moods...</p>
                   </div>
                 ) : moodDataError ? (
                   <div className="h-[300px] flex flex-col items-center justify-center">
@@ -217,8 +475,9 @@ export default function Dashboard() {
               <div className="p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-white">Your Top Songs</h2>
                 {isLoadingTopTracks ? (
-                  <div className="h-[200px] flex items-center justify-center">
+                  <div className="h-[200px] flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                    <p className="text-white/70 mt-4">Fetching your favorite tracks...</p>
                   </div>
                 ) : topTracksError ? (
                   <div className="text-white/70 p-4">{topTracksError}</div>
@@ -268,18 +527,28 @@ export default function Dashboard() {
           <div className="space-y-8">
             <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
               <div className="p-6 space-y-6">
-                <h2 className="text-xl font-semibold text-white">Genre Analysis</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-white">Genre Analysis</h2>
+                  <button 
+                    onClick={() => setDebugMode(!debugMode)} 
+                    className="text-xs px-2 py-1 bg-purple-800/50 rounded text-white/80 hover:bg-purple-700/50"
+                  >
+                    {debugMode ? 'Debug On' : 'Debug Off'}
+                  </button>
+                </div>
                 {isLoadingGenreData ? (
-                  <div className="h-[400px] flex items-center justify-center">
+                  <div className="h-[300px] flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                    <p className="text-white/70 mt-4">Discovering your music taste...</p>
                   </div>
                 ) : genreDataError ? (
                   <div className="text-white/70 p-4">{genreDataError}</div>
                 ) : (
                   <GenreDistribution 
-                    data={genreData.genreDistribution} 
-                    timelineData={genreData.timelineData}
+                    genreData={genreData.genreDistribution} 
                     correlationData={genreData.correlationData}
+                    isLoading={isLoadingGenreData}
+                    error={genreDataError}
                   />
                 )}
               </div>
@@ -288,38 +557,47 @@ export default function Dashboard() {
             <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
               <div className="p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-white">Top Albums This Week</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {topAlbums.slice(0, 10).map((album) => (
-                    <div key={album.id} className="flex items-center gap-3 group">
-                      <div className="w-16 h-16 shrink-0">
-                        {album.image ? (
-                          <Image
-                            src={album.image}
-                            alt={album.name}
-                            width={64}
-                            height={64}
-                            className="rounded-md object-cover"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-md bg-white/10 flex items-center justify-center">
-                            <MusicalNoteIcon className="w-8 h-8 text-white/40" />
+                {isLoadingTopAlbums ? (
+                  <div className="h-[200px] flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-400"></div>
+                    <p className="text-white/70 mt-4">Loading your albums...</p>
+                  </div>
+                ) : topAlbumsError ? (
+                  <div className="text-white/70 p-4">{topAlbumsError}</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {topAlbums.slice(0, 10).map((album) => (
+                      <div key={album.id} className="flex items-center gap-3 group">
+                        <div className="w-16 h-16 shrink-0">
+                          {album.image ? (
+                            <Image
+                              src={album.image}
+                              alt={album.name}
+                              width={64}
+                              height={64}
+                              className="rounded-md object-cover"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-md bg-white/10 flex items-center justify-center">
+                              <MusicalNoteIcon className="w-8 h-8 text-white/40" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-white group-hover:text-purple-300 transition-colors">
+                            {album.name}
                           </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-white group-hover:text-purple-300 transition-colors">
-                          {album.name}
-                        </div>
-                        <div className="text-sm text-white/60">
-                          {album.artist}
-                        </div>
-                        <div className="text-sm text-white/60">
-                          {album.count} {album.count === 1 ? 'play' : 'plays'}
+                          <div className="text-sm text-white/60">
+                            {album.artist}
+                          </div>
+                          <div className="text-sm text-white/60">
+                            {album.count} {album.count === 1 ? 'play' : 'plays'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

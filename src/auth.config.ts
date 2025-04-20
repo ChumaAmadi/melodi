@@ -1,14 +1,36 @@
-import type { NextAuthConfig } from "next-auth";
-import Spotify from "next-auth/providers/spotify";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { NextAuthOptions } from "next-auth";
+import SpotifyProvider from "next-auth/providers/spotify";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import type { Session } from "next-auth";
+import type { Account, Profile, User } from "@auth/core/types";
 
-export const authConfig = {
+// Extend the Session type to include accessToken
+declare module "next-auth" {
+  interface Session {
+    accessToken?: string;
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+// Use Cloudflare tunnel URL for local development
+const NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'https://supreme-t-angela-appearing.trycloudflare.com';
+
+if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
+  throw new Error('Missing Spotify credentials');
+}
+
+export const authConfig: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    Spotify({
-      clientId: process.env.SPOTIFY_CLIENT_ID!,
-      clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+    SpotifyProvider({
+      clientId: process.env.SPOTIFY_CLIENT_ID,
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
       authorization: {
         params: {
           scope: "user-read-email user-read-recently-played user-top-read user-read-currently-playing user-read-playback-state playlist-read-private playlist-read-collaborative user-library-read streaming",
@@ -20,22 +42,15 @@ export const authConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub!;
-        (session as any).accessToken = token.accessToken;
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },
-    async jwt({ token, account, user }) {
-      // Initial sign in
-      if (account && user) {
-        return {
-          ...token,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token,
-          accessTokenExpires: account.expires_at! * 1000,
-          name: user.name,
-          email: user.email,
-          picture: user.image,
-        };
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        token.accessTokenExpires = account.expires_at! * 1000;
       }
 
       // Return previous token if the access token has not expired
@@ -44,23 +59,27 @@ export const authConfig = {
       }
 
       // Access token has expired, refresh it
-      const refreshedToken = await refreshAccessToken(token);
-      return {
-        ...token,
-        ...refreshedToken,
-      };
-    },
-    async redirect({ url, baseUrl }) {
-      // Always redirect to the dashboard after sign in
-      return baseUrl;
+      return refreshAccessToken(token);
     },
   },
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/error",
   },
-} satisfies NextAuthConfig;
+  session: {
+    strategy: "jwt",
+  },
+};
 
-async function refreshAccessToken(token: any) {
+type Token = {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpires?: number;
+  error?: string;
+  sub?: string;
+};
+
+async function refreshAccessToken(token: Token) {
   try {
     const response = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
@@ -72,24 +91,23 @@ async function refreshAccessToken(token: any) {
       },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        refresh_token: token.refreshToken,
+        refresh_token: token.refreshToken as string,
       }),
     });
 
-    const data = await response.json();
+    const refreshedTokens = await response.json();
 
     if (!response.ok) {
-      throw data;
+      throw refreshedTokens;
     }
 
     return {
       ...token,
-      accessToken: data.access_token,
-      accessTokenExpires: Date.now() + data.expires_in * 1000,
-      refreshToken: data.refresh_token ?? token.refreshToken,
+      accessToken: refreshedTokens.access_token,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
     };
   } catch (error) {
-    console.error("Error refreshing access token", error);
     return {
       ...token,
       error: "RefreshAccessTokenError",

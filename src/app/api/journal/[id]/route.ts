@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { prisma } from "@/lib/prisma";
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(
-  req: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth();
+  const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,24 +25,15 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Verify the entry belongs to the user before deleting
-    const entry = await prisma.journalEntry.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!entry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 });
-    }
-
-    if (entry.userId !== user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    // Delete the journal entry
     await prisma.journalEntry.delete({
-      where: { id: params.id },
+      where: {
+        id: params.id,
+        userId: user.id,
+      },
     });
 
-    return NextResponse.json({ message: "Entry deleted successfully" });
+    return NextResponse.json({ message: "Journal entry deleted successfully" });
   } catch (error) {
     console.error("Error deleting journal entry:", error);
     return NextResponse.json(
@@ -49,4 +41,13 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authConfig);
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // ... existing code ...
 } 

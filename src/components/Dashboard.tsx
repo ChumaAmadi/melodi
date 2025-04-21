@@ -63,7 +63,7 @@ interface DashboardProps {
   listeningHistory?: Track[];
 }
 
-const REFRESH_INTERVAL = 30000; // Refresh every 30 seconds
+const REFRESH_INTERVAL = 300000; // Refresh every 5 minutes
 
 export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   const { data: session } = useSession();
@@ -78,42 +78,109 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
     correlationData: { genre: string; moods: { mood: string; strength: number; count: number }[] }[]
   }>({
     genreDistribution: [
-      { name: 'pop', count: 1, color: 'rgba(255, 92, 168, 0.85)' },
-      { name: 'rock', count: 1, color: 'rgba(164, 182, 255, 0.85)' },
-      { name: 'electronic', count: 1, color: 'rgba(46, 254, 200, 0.85)' }
+      { name: 'Pop', count: 32, color: 'rgba(255, 92, 168, 0.85)' },
+      { name: 'Rock', count: 24, color: 'rgba(164, 182, 255, 0.85)' },
+      { name: 'Electronic', count: 18, color: 'rgba(46, 254, 200, 0.85)' },
+      { name: 'Hip Hop', count: 15, color: 'rgba(255, 152, 0, 0.85)' },
+      { name: 'R&B', count: 10, color: 'rgba(156, 39, 176, 0.85)' },
+      { name: 'Jazz', count: 8, color: 'rgba(33, 150, 243, 0.85)' },
+      { name: 'Classical', count: 7, color: 'rgba(76, 175, 80, 0.85)' },
+      { name: 'Country', count: 6, color: 'rgba(255, 235, 59, 0.85)' },
+      { name: 'Folk', count: 5, color: 'rgba(255, 87, 34, 0.85)' },
+      { name: 'Metal', count: 12, color: 'rgba(33, 33, 33, 0.85)' },
+      { name: 'Alternative', count: 14, color: 'rgba(96, 125, 139, 0.85)' },
+      { name: 'Indie', count: 16, color: 'rgba(121, 85, 72, 0.85)' },
+      { name: 'Soul', count: 9, color: 'rgba(244, 67, 54, 0.85)' },
+      { name: 'Blues', count: 7, color: 'rgba(63, 81, 181, 0.85)' },
+      { name: 'Reggae', count: 5, color: 'rgba(0, 150, 136, 0.85)' }
     ],
     correlationData: [
       {
-        genre: 'pop',
+        genre: 'Pop',
         moods: [
-          { mood: 'Happy', strength: 0.7, count: 1 },
-          { mood: 'Calm', strength: 0.4, count: 1 },
-          { mood: 'Sad', strength: 0.1, count: 1 },
-          { mood: 'Frustrated', strength: 0.1, count: 1 },
-          { mood: 'Reflective', strength: 0.3, count: 1 },
-          { mood: 'Inspired', strength: 0.6, count: 1 }
+          { mood: 'Happy', strength: 0.7, count: 10 },
+          { mood: 'Calm', strength: 0.4, count: 6 },
+          { mood: 'Sad', strength: 0.1, count: 2 },
+          { mood: 'Frustrated', strength: 0.1, count: 2 },
+          { mood: 'Reflective', strength: 0.3, count: 5 },
+          { mood: 'Inspired', strength: 0.6, count: 7 }
         ]
       },
       {
-        genre: 'rock',
+        genre: 'Rock',
         moods: [
-          { mood: 'Happy', strength: 0.4, count: 1 },
-          { mood: 'Calm', strength: 0.2, count: 1 },
-          { mood: 'Sad', strength: 0.3, count: 1 },
-          { mood: 'Frustrated', strength: 0.6, count: 1 },
-          { mood: 'Reflective', strength: 0.4, count: 1 },
-          { mood: 'Inspired', strength: 0.5, count: 1 }
+          { mood: 'Happy', strength: 0.4, count: 6 },
+          { mood: 'Calm', strength: 0.2, count: 3 },
+          { mood: 'Sad', strength: 0.3, count: 4 },
+          { mood: 'Frustrated', strength: 0.6, count: 8 },
+          { mood: 'Reflective', strength: 0.4, count: 6 },
+          { mood: 'Inspired', strength: 0.5, count: 7 }
         ]
       },
       {
-        genre: 'electronic',
+        genre: 'Electronic',
         moods: [
-          { mood: 'Happy', strength: 0.6, count: 1 },
-          { mood: 'Calm', strength: 0.3, count: 1 },
-          { mood: 'Sad', strength: 0.2, count: 1 },
-          { mood: 'Frustrated', strength: 0.2, count: 1 },
-          { mood: 'Reflective', strength: 0.3, count: 1 },
-          { mood: 'Inspired', strength: 0.7, count: 1 }
+          { mood: 'Happy', strength: 0.6, count: 8 },
+          { mood: 'Calm', strength: 0.3, count: 4 },
+          { mood: 'Sad', strength: 0.2, count: 3 },
+          { mood: 'Frustrated', strength: 0.2, count: 3 },
+          { mood: 'Reflective', strength: 0.3, count: 5 },
+          { mood: 'Inspired', strength: 0.7, count: 9 }
+        ]
+      },
+      {
+        genre: 'Hip Hop',
+        moods: [
+          { mood: 'Happy', strength: 0.5, count: 7 },
+          { mood: 'Calm', strength: 0.2, count: 3 },
+          { mood: 'Sad', strength: 0.3, count: 4 },
+          { mood: 'Frustrated', strength: 0.5, count: 7 },
+          { mood: 'Reflective', strength: 0.4, count: 6 },
+          { mood: 'Inspired', strength: 0.6, count: 8 }
+        ]
+      },
+      {
+        genre: 'R&B',
+        moods: [
+          { mood: 'Happy', strength: 0.4, count: 6 },
+          { mood: 'Calm', strength: 0.6, count: 8 },
+          { mood: 'Sad', strength: 0.3, count: 4 },
+          { mood: 'Frustrated', strength: 0.1, count: 2 },
+          { mood: 'Reflective', strength: 0.5, count: 7 },
+          { mood: 'Inspired', strength: 0.4, count: 6 }
+        ]
+      },
+      {
+        genre: 'Jazz',
+        moods: [
+          { mood: 'Happy', strength: 0.5, count: 7 },
+          { mood: 'Calm', strength: 0.7, count: 9 },
+          { mood: 'Sad', strength: 0.2, count: 3 },
+          { mood: 'Frustrated', strength: 0.1, count: 2 },
+          { mood: 'Reflective', strength: 0.6, count: 8 },
+          { mood: 'Inspired', strength: 0.5, count: 7 }
+        ]
+      },
+      {
+        genre: 'Classical',
+        moods: [
+          { mood: 'Happy', strength: 0.3, count: 4 },
+          { mood: 'Calm', strength: 0.8, count: 10 },
+          { mood: 'Sad', strength: 0.4, count: 5 },
+          { mood: 'Frustrated', strength: 0.1, count: 2 },
+          { mood: 'Reflective', strength: 0.7, count: 9 },
+          { mood: 'Inspired', strength: 0.6, count: 8 }
+        ]
+      },
+      {
+        genre: 'Metal',
+        moods: [
+          { mood: 'Happy', strength: 0.3, count: 4 },
+          { mood: 'Calm', strength: 0.1, count: 2 },
+          { mood: 'Sad', strength: 0.3, count: 4 },
+          { mood: 'Frustrated', strength: 0.8, count: 10 },
+          { mood: 'Reflective', strength: 0.3, count: 4 },
+          { mood: 'Inspired', strength: 0.5, count: 7 }
         ]
       }
     ]
@@ -131,7 +198,6 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   const [insight, setInsight] = useState<string>('Discover insights from your music journey...');
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const chatRef = useRef<HTMLDivElement>(null);
-  const [debugMode, setDebugMode] = useState<boolean>(true);
   
   // Get first name from full name
   const firstName = session?.user?.name?.split(' ')[0] || '';
@@ -232,55 +298,6 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
       setIsLoadingGenreData(false);
     }
   };
-
-  useEffect(() => {
-    if (debugMode && !isLoadingGenreData) {
-      console.log('Debug mode active, ensuring default data is set');
-      // Force default data in debug mode
-      setGenreData({
-        genreDistribution: [
-          { name: 'pop', count: 10, color: 'rgba(255, 92, 168, 0.85)' },
-          { name: 'rock', count: 8, color: 'rgba(164, 182, 255, 0.85)' },
-          { name: 'electronic', count: 6, color: 'rgba(46, 254, 200, 0.85)' }
-        ],
-        correlationData: [
-          {
-            genre: 'pop',
-            moods: [
-              { mood: 'Happy', strength: 0.7, count: 5 },
-              { mood: 'Calm', strength: 0.4, count: 3 },
-              { mood: 'Sad', strength: 0.1, count: 1 },
-              { mood: 'Frustrated', strength: 0.1, count: 1 },
-              { mood: 'Reflective', strength: 0.3, count: 2 },
-              { mood: 'Inspired', strength: 0.6, count: 4 }
-            ]
-          },
-          {
-            genre: 'rock',
-            moods: [
-              { mood: 'Happy', strength: 0.4, count: 3 },
-              { mood: 'Calm', strength: 0.2, count: 1 },
-              { mood: 'Sad', strength: 0.3, count: 2 },
-              { mood: 'Frustrated', strength: 0.6, count: 4 },
-              { mood: 'Reflective', strength: 0.4, count: 3 },
-              { mood: 'Inspired', strength: 0.5, count: 3 }
-            ]
-          },
-          {
-            genre: 'electronic',
-            moods: [
-              { mood: 'Happy', strength: 0.6, count: 4 },
-              { mood: 'Calm', strength: 0.3, count: 2 },
-              { mood: 'Sad', strength: 0.2, count: 1 },
-              { mood: 'Frustrated', strength: 0.2, count: 1 },
-              { mood: 'Reflective', strength: 0.3, count: 2 },
-              { mood: 'Inspired', strength: 0.7, count: 5 }
-            ]
-          }
-        ]
-      });
-    }
-  }, [debugMode, isLoadingGenreData]);
 
   useEffect(() => {
     async function fetchData() {
@@ -398,6 +415,47 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
     setTimeout(() => {
       chatRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+
+  // Add a refresh function for genre data
+  const refreshGenreData = async () => {
+    try {
+      setIsLoadingGenreData(true);
+      setGenreDataError(null);
+      
+      console.log('Manually refreshing genre distribution data...');
+      // Add a force-refresh query parameter to bypass any caching
+      const response = await fetch('/api/genre-distribution?forceRefresh=true&t=' + Date.now());
+      
+      if (!response.ok) {
+        throw new Error(`Failed to refresh genre data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Refreshed genre distribution API response:', {
+        status: data.status,
+        source: data.source,
+        genreCount: data.genreDistribution?.length || 0
+      });
+      
+      if (data.status === 'success') {
+        setGenreData({
+          genreDistribution: data.genreDistribution || [],
+          correlationData: data.correlationData || []
+        });
+        return true;
+      } else {
+        setGenreDataError(data.message || 'Unable to refresh genre data');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error refreshing genre data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to refresh genre data';
+      setGenreDataError(errorMessage);
+      return false;
+    } finally {
+      setIsLoadingGenreData(false);
+    }
   };
 
   if (!session) {
@@ -529,12 +587,6 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
               <div className="p-6 space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-white">Genre Analysis</h2>
-                  <button 
-                    onClick={() => setDebugMode(!debugMode)} 
-                    className="text-xs px-2 py-1 bg-purple-800/50 rounded text-white/80 hover:bg-purple-700/50"
-                  >
-                    {debugMode ? 'Debug On' : 'Debug Off'}
-                  </button>
                 </div>
                 {isLoadingGenreData ? (
                   <div className="h-[300px] flex flex-col items-center justify-center">
@@ -549,6 +601,7 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
                     correlationData={genreData.correlationData}
                     isLoading={isLoadingGenreData}
                     error={genreDataError}
+                    onRefresh={refreshGenreData}
                   />
                 )}
               </div>

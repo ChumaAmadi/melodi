@@ -77,117 +77,12 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
     genreDistribution: GenreData[],
     correlationData: { genre: string; moods: { mood: string; strength: number; count: number }[] }[]
   }>({
-    genreDistribution: [
-      { name: 'Pop', count: 32, color: 'rgba(255, 92, 168, 0.85)' },
-      { name: 'Rock', count: 24, color: 'rgba(164, 182, 255, 0.85)' },
-      { name: 'Electronic', count: 18, color: 'rgba(46, 254, 200, 0.85)' },
-      { name: 'Hip Hop', count: 15, color: 'rgba(255, 152, 0, 0.85)' },
-      { name: 'R&B', count: 10, color: 'rgba(156, 39, 176, 0.85)' },
-      { name: 'Jazz', count: 8, color: 'rgba(33, 150, 243, 0.85)' },
-      { name: 'Classical', count: 7, color: 'rgba(76, 175, 80, 0.85)' },
-      { name: 'Country', count: 6, color: 'rgba(255, 235, 59, 0.85)' },
-      { name: 'Folk', count: 5, color: 'rgba(255, 87, 34, 0.85)' },
-      { name: 'Metal', count: 12, color: 'rgba(33, 33, 33, 0.85)' },
-      { name: 'Alternative', count: 14, color: 'rgba(96, 125, 139, 0.85)' },
-      { name: 'Indie', count: 16, color: 'rgba(121, 85, 72, 0.85)' },
-      { name: 'Soul', count: 9, color: 'rgba(244, 67, 54, 0.85)' },
-      { name: 'Blues', count: 7, color: 'rgba(63, 81, 181, 0.85)' },
-      { name: 'Reggae', count: 5, color: 'rgba(0, 150, 136, 0.85)' }
-    ],
-    correlationData: [
-      {
-        genre: 'Pop',
-        moods: [
-          { mood: 'Happy', strength: 0.7, count: 10 },
-          { mood: 'Calm', strength: 0.4, count: 6 },
-          { mood: 'Sad', strength: 0.1, count: 2 },
-          { mood: 'Frustrated', strength: 0.1, count: 2 },
-          { mood: 'Reflective', strength: 0.3, count: 5 },
-          { mood: 'Inspired', strength: 0.6, count: 7 }
-        ]
-      },
-      {
-        genre: 'Rock',
-        moods: [
-          { mood: 'Happy', strength: 0.4, count: 6 },
-          { mood: 'Calm', strength: 0.2, count: 3 },
-          { mood: 'Sad', strength: 0.3, count: 4 },
-          { mood: 'Frustrated', strength: 0.6, count: 8 },
-          { mood: 'Reflective', strength: 0.4, count: 6 },
-          { mood: 'Inspired', strength: 0.5, count: 7 }
-        ]
-      },
-      {
-        genre: 'Electronic',
-        moods: [
-          { mood: 'Happy', strength: 0.6, count: 8 },
-          { mood: 'Calm', strength: 0.3, count: 4 },
-          { mood: 'Sad', strength: 0.2, count: 3 },
-          { mood: 'Frustrated', strength: 0.2, count: 3 },
-          { mood: 'Reflective', strength: 0.3, count: 5 },
-          { mood: 'Inspired', strength: 0.7, count: 9 }
-        ]
-      },
-      {
-        genre: 'Hip Hop',
-        moods: [
-          { mood: 'Happy', strength: 0.5, count: 7 },
-          { mood: 'Calm', strength: 0.2, count: 3 },
-          { mood: 'Sad', strength: 0.3, count: 4 },
-          { mood: 'Frustrated', strength: 0.5, count: 7 },
-          { mood: 'Reflective', strength: 0.4, count: 6 },
-          { mood: 'Inspired', strength: 0.6, count: 8 }
-        ]
-      },
-      {
-        genre: 'R&B',
-        moods: [
-          { mood: 'Happy', strength: 0.4, count: 6 },
-          { mood: 'Calm', strength: 0.6, count: 8 },
-          { mood: 'Sad', strength: 0.3, count: 4 },
-          { mood: 'Frustrated', strength: 0.1, count: 2 },
-          { mood: 'Reflective', strength: 0.5, count: 7 },
-          { mood: 'Inspired', strength: 0.4, count: 6 }
-        ]
-      },
-      {
-        genre: 'Jazz',
-        moods: [
-          { mood: 'Happy', strength: 0.5, count: 7 },
-          { mood: 'Calm', strength: 0.7, count: 9 },
-          { mood: 'Sad', strength: 0.2, count: 3 },
-          { mood: 'Frustrated', strength: 0.1, count: 2 },
-          { mood: 'Reflective', strength: 0.6, count: 8 },
-          { mood: 'Inspired', strength: 0.5, count: 7 }
-        ]
-      },
-      {
-        genre: 'Classical',
-        moods: [
-          { mood: 'Happy', strength: 0.3, count: 4 },
-          { mood: 'Calm', strength: 0.8, count: 10 },
-          { mood: 'Sad', strength: 0.4, count: 5 },
-          { mood: 'Frustrated', strength: 0.1, count: 2 },
-          { mood: 'Reflective', strength: 0.7, count: 9 },
-          { mood: 'Inspired', strength: 0.6, count: 8 }
-        ]
-      },
-      {
-        genre: 'Metal',
-        moods: [
-          { mood: 'Happy', strength: 0.3, count: 4 },
-          { mood: 'Calm', strength: 0.1, count: 2 },
-          { mood: 'Sad', strength: 0.3, count: 4 },
-          { mood: 'Frustrated', strength: 0.8, count: 10 },
-          { mood: 'Reflective', strength: 0.3, count: 4 },
-          { mood: 'Inspired', strength: 0.5, count: 7 }
-        ]
-      }
-    ]
+    genreDistribution: [],
+    correlationData: []
   });
   const [isLoadingMoodData, setIsLoadingMoodData] = useState(true);
   const [moodDataError, setMoodDataError] = useState<string | null>(null);
-  const [isLoadingGenreData, setIsLoadingGenreData] = useState(false);
+  const [isLoadingGenreData, setIsLoadingGenreData] = useState(true);
   const [genreDataError, setGenreDataError] = useState<string | null>(null);
   const [isLoadingTopTracks, setIsLoadingTopTracks] = useState(true);
   const [isLoadingTopAlbums, setIsLoadingTopAlbums] = useState(true);
@@ -208,14 +103,15 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   sevenDaysAgo.setDate(today.getDate() - 7);
   const dateRange = `${format(sevenDaysAgo, 'MMM d')} - ${format(today, 'MMM d, yyyy')}`;
   
+  // Define moodData state with empty arrays
   const [moodData, setMoodData] = useState<MoodData>({
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    happy: [0, 0, 0, 0, 0, 0, 0],
-    calm: [0, 0, 0, 0, 0, 0, 0],
-    sad: [0, 0, 0, 0, 0, 0, 0],
-    frustrated: [0, 0, 0, 0, 0, 0, 0],
-    reflective: [0, 0, 0, 0, 0, 0, 0],
-    inspired: [0, 0, 0, 0, 0, 0, 0],
+    labels: [],
+    happy: [],
+    calm: [],
+    sad: [],
+    frustrated: [],
+    reflective: [],
+    inspired: [],
   });
 
   // Separate function to fetch genre data with retry logic

@@ -4,7 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, useAnimation } from "framer-motion";
+import { motion, useAnimation, AnimatePresence } from "framer-motion";
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
 import { 
@@ -124,6 +124,12 @@ const MusicWave = () => {
   );
 };
 
+const headlineVariants = {
+  enter: { opacity: 0, y: 20 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
+};
+
 export default function SignIn() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -192,11 +198,18 @@ export default function SignIn() {
   useEffect(() => {
     const interval = setInterval(() => {
       setIsTransitioning(true);
+      
+      // Wait for exit animation to complete before changing the headline
       setTimeout(() => {
         setCurrentHeadline((current) => (current + 1) % headlines.length);
-        setIsTransitioning(false);
-      }, 500); // Half of the transition duration
-    }, 5000);
+        
+        // Reset transitioning state after a small delay to allow new content to animate in
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 100);
+      }, 1000);
+    }, 6000); // Increased from 5000ms to 6000ms to allow for longer transitions
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -287,14 +300,23 @@ export default function SignIn() {
                 melodi
               </motion.h1>
             </motion.div>
-            <div className="h-[72px] flex items-center justify-center lg:justify-start overflow-hidden">
-              <motion.h2 
-                className="text-4xl sm:text-5xl font-bold tracking-tight text-white"
-                animate={{ opacity: [0, 1], y: [20, 0] }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              >
-                {headlines[currentHeadline]}
-              </motion.h2>
+            <div className="h-[72px] flex items-center justify-center lg:justify-start overflow-hidden relative">
+              <AnimatePresence mode="crossfade">
+                <motion.h2 
+                  key={currentHeadline}
+                  className="text-4xl sm:text-5xl font-bold tracking-tight text-white absolute left-0 right-0 mx-auto lg:mx-0 text-center lg:text-left"
+                  variants={headlineVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ 
+                    duration: 1.5,
+                    ease: [0.22, 1, 0.36, 1] // Custom cubic-bezier curve for smoother easing
+                  }}
+                >
+                  {headlines[currentHeadline]}
+                </motion.h2>
+              </AnimatePresence>
             </div>
             <motion.p 
               className="text-xl text-gray-300 max-w-2xl"

@@ -963,28 +963,18 @@ export default function GenreDistribution({
             </div>
           ) : hasValidGenreData ? (
             <div className="relative">
-              {apiStatus === 'empty' || apiStatus === 'no-account' ? (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-purple-900/70 p-3 rounded-lg text-white/80 text-sm max-w-[80%] text-center">
-                    {apiMessage || 'Sample data shown - Play music to see your actual genre distribution'}
-                  </div>
-                </div>
-              ) : null}
-        <Doughnut 
-          data={doughnutData} 
-          options={doughnutOptions} 
+              <Doughnut 
+                data={doughnutData} 
+                options={doughnutOptions} 
                 ref={ref => donutChartRef.current = ref}
               />
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-[300px] rounded-lg bg-black/20 p-4">
-              <MusicalNoteIcon className="h-8 w-8 text-purple-400 mb-2" />
-              <p className="text-white/70 text-center">No listening data available</p>
-              <p className="text-white/50 text-sm text-center mt-1">
-                Play some music to see your genre distribution
-              </p>
-          </div>
-        )}
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-400 mb-3"></div>
+              <p className="text-white/70">Loading your music data...</p>
+            </div>
+          )}
       </div>
       <div className="aspect-square">
           <h4 className="text-md font-medium text-white/80 mb-3">{formatMoodTitle()}</h4>

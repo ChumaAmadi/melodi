@@ -47,8 +47,9 @@ export default function MoodTimeline({ data }: MoodTimelineProps) {
 
   if (!hasData) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
-        <p className="text-white/70">No mood data available. Add journal entries to see your mood timeline.</p>
+      <div className="h-[300px] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-400 mb-3"></div>
+        <p className="text-white/70">Loading your mood data...</p>
       </div>
     );
   }

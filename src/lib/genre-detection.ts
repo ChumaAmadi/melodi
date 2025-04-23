@@ -84,7 +84,11 @@ export async function getCachedArtistGenres(artistName: string): Promise<string[
     
     // Then check database cache using API endpoint instead of direct Prisma call
     try {
-      const response = await fetch(`/api/genre-cache?artist=${encodeURIComponent(artistName)}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const url = new URL(`/api/genre-cache`, baseUrl);
+      url.searchParams.append('artist', encodeURIComponent(artistName));
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +134,10 @@ export async function updateArtistGenres(artistName: string, genres: string[]): 
     
     // Update database cache using API endpoint instead of direct Prisma call
     try {
-      const response = await fetch('/api/genre-cache', {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const url = new URL('/api/genre-cache', baseUrl);
+
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -338,7 +345,10 @@ export async function detectArtistGenres(artistName: string): Promise<string[]> 
 export async function updateArtistGenreCache(artistId: string, genres: string[]) {
   try {
     // Update the database cache using the API endpoint
-    const response = await fetch('/api/genre-cache', {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const url = new URL('/api/genre-cache', baseUrl);
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,15 +1,31 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(request: Request) {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+// Add CORS headers to the response
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return corsHeaders(new NextResponse(null, { status: 200 }));
+}
+
+export async function POST(request: NextRequest) {
   try {
     // Get the session to verify user is authenticated
     const session = await getServerSession(authConfig);
     
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return corsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
     }
 
     // Get user from database
@@ -18,7 +34,7 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return corsHeaders(NextResponse.json({ error: "User not found" }, { status: 404 }));
     }
 
     // Parse the request body
@@ -26,7 +42,7 @@ export async function POST(request: Request) {
     const { trackIds } = body;
 
     if (!Array.isArray(trackIds) || trackIds.length === 0) {
-      return NextResponse.json([]);
+      return corsHeaders(NextResponse.json([]));
     }
 
     console.log(`Fetching play counts for ${trackIds.length} tracks`);
@@ -51,12 +67,12 @@ export async function POST(request: Request) {
 
     console.log(`Found play counts for ${results.length} tracks`);
     
-    return NextResponse.json(results);
+    return corsHeaders(NextResponse.json(results));
   } catch (error) {
     console.error('Error getting track counts:', error);
-    return NextResponse.json(
+    return corsHeaders(NextResponse.json(
       { error: 'Failed to get track counts' },
       { status: 500 }
-    );
+    ));
   }
 } 

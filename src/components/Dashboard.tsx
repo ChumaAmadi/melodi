@@ -364,8 +364,106 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900">
-      <header className="w-full px-6 py-4 flex items-center justify-between bg-black/10 backdrop-blur-sm border-b border-white/5">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 relative overflow-hidden">
+      {/* Dynamic animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-[-1]">
+        {/* Animated waveform pattern */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 opacity-10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="w-full">
+            <path 
+              fill="rgba(255,255,255,0.3)" 
+              fillOpacity="1" 
+              className="animate-wave-slow" 
+              style={{animationDuration: '7s'}}
+              d="M0,64L48,80C96,96,192,128,288,122.7C384,117,480,75,576,74.7C672,75,768,117,864,144C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+            </path>
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="w-full absolute bottom-0">
+            <path 
+              fill="rgba(255,255,255,0.2)" 
+              fillOpacity="1" 
+              className="animate-wave-slow" 
+              style={{animationDuration: '15s', animationDirection: 'reverse'}}
+              d="M0,160L40,160C80,160,160,160,240,144C320,128,400,96,480,112C560,128,640,192,720,192C800,192,880,128,960,112C1040,96,1120,128,1200,138.7C1280,149,1360,139,1400,133.3L1440,128L1440,320L1400,320C1360,320,1280,320,1200,320C1120,320,1040,320,960,320C880,320,800,320,720,320C640,320,560,320,480,320C400,320,320,320,240,320C160,320,80,320,40,320L0,320Z">
+            </path>
+          </svg>
+        </div>
+
+        {/* Spectrum analyzer */}
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-end h-20 gap-[3px] opacity-20">
+          {[...Array(30)].map((_, i) => (
+            <div 
+              key={i} 
+              className="w-[5px] bg-gradient-to-t from-blue-400 via-purple-500 to-pink-500 rounded-t-lg"
+              style={{
+                height: `${Math.abs(Math.sin((i + 1) * 0.3)) * 100}%`,
+                animation: `spectrum ${1.5 + Math.random() * 2}s ease-in-out infinite alternate`,
+                animationDelay: `${i * 0.1}s`
+              }}
+            ></div>
+          ))}
+        </div>
+
+        {/* Animated abstract music visualizer */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px]">
+            <div className="absolute w-full h-full rounded-full border-2 border-blue-400/30 animate-pulse-slow"></div>
+            <div className="absolute w-full h-full rounded-full border-2 border-purple-400/30 animate-pulse-slow" style={{animationDelay: '0.5s'}}></div>
+            <div className="absolute w-full h-full rounded-full border-2 border-pink-400/30 animate-pulse-slow" style={{animationDelay: '1s'}}></div>
+            <div className="absolute w-full h-full rounded-full border-2 border-indigo-400/30 animate-pulse-slow" style={{animationDelay: '1.5s'}}></div>
+            
+            {/* Intersecting circles */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full border-2 border-white/10 animate-spin-slow" style={{animationDuration: '20s'}}></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full border-2 border-white/10 animate-spin-slow" style={{animationDuration: '25s', transformOrigin: 'center', transform: 'rotate(45deg)'}}></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full border-2 border-white/10 animate-spin-slow" style={{animationDuration: '30s', transformOrigin: 'center', transform: 'rotate(90deg)'}}></div>
+          </div>
+        </div>
+
+        {/* Flying music notes */}
+        <div className="absolute inset-0">
+          {[...Array(8)].map((_, i) => {
+            const symbols = ['♩', '♪', '♫', '♬', '♭', '♮', '♯'];
+            const sizes = ['text-2xl', 'text-3xl', 'text-4xl', 'text-5xl'];
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            const size = sizes[Math.floor(Math.random() * sizes.length)];
+            
+            return (
+              <div 
+                key={i}
+                className={`absolute text-white/10 ${size} animate-float-note`}
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDuration: `${15 + Math.random() * 20}s`,
+                  animationDelay: `${Math.random() * 10}s`
+                }}
+              >
+                {symbol}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Stylized vinyl record */}
+        <div className="absolute bottom-10 right-10 w-60 h-60 opacity-10">
+          <div className="relative w-full h-full animate-spin-very-slow">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 to-black"></div>
+            <div className="absolute inset-[15%] rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+              <div className="w-1/2 h-1/2 rounded-full bg-gradient-to-br from-gray-600 to-gray-800"></div>
+            </div>
+            {/* Vinyl grooves */}
+            <div className="absolute inset-[10%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[20%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[30%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[40%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[50%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[60%] rounded-full border border-white/5"></div>
+            <div className="absolute inset-[70%] rounded-full border border-white/5"></div>
+          </div>
+        </div>
+      </div>
+      
+      <header className="w-full px-6 py-4 flex items-center justify-between bg-black/10 backdrop-blur-sm border-b border-white/5 relative z-[2000] transform-gpu" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center">
           <Link href="/" className="hover:opacity-80 transition-opacity">
             <Image
@@ -386,7 +484,7 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
         )}
       </header>
 
-      <main className="container mx-auto px-6 py-8 space-y-8 relative z-0">
+      <main className="container mx-auto px-6 py-8 space-y-8 relative z-10">
         {/* Insight Header */}
         <InsightHeader insight={insight} onChatOpen={handleChatOpen} />
         
@@ -403,7 +501,7 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300">
               <div className="p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                   Your Week in Music
@@ -552,6 +650,72 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
           </div>
         </div>
       </main>
+      
+      {/* Custom animation keyframes */}
+      <style jsx global>{`
+        @keyframes wave-slow {
+          0% {
+            transform: translateX(0);
+          }
+          50% {
+            transform: translateX(-5%);
+          }
+          100% {
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes spectrum {
+          0% {
+            height: 10%;
+          }
+          50% {
+            height: var(--random-height, 70%);
+          }
+          100% {
+            height: 30%;
+          }
+        }
+        
+        @keyframes float-note {
+          0% {
+            transform: translate(0, 0) rotate(0deg);
+            opacity: 0.05;
+          }
+          25% {
+            transform: translate(50px, -30px) rotate(20deg);
+            opacity: 0.1;
+          }
+          50% {
+            transform: translate(100px, -60px) rotate(40deg);
+            opacity: 0.05;
+          }
+          75% {
+            transform: translate(150px, -30px) rotate(20deg);
+            opacity: 0.1;
+          }
+          100% {
+            transform: translate(200px, 0) rotate(0deg);
+            opacity: 0;
+          }
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .animate-spin-slow {
+          animation: spin 20s linear infinite;
+        }
+        
+        .animate-spin-very-slow {
+          animation: spin 40s linear infinite;
+        }
+        
+        .animate-wave-slow {
+          animation: wave-slow 8s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 } 

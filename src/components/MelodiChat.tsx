@@ -194,7 +194,7 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
       {/* Modal backdrop */}
       {isChatOpen && (
         <div 
-          className="fixed top-0 left-0 right-0 bottom-0 min-h-[100vh] min-w-[100vw] bg-black/50 z-40 transition-opacity overflow-hidden" 
+          className="fixed top-0 left-0 right-0 bottom-0 min-h-[100vh] min-w-[100vw] bg-black/50 z-30 transition-opacity overflow-hidden" 
           aria-hidden="true" 
           style={{ margin: 0, padding: 0 }}
         />
@@ -203,7 +203,7 @@ const MelodiChat: React.FC<MelodiChatProps> = ({
       {/* Chat modal */}
       {isChatOpen && (
         <div
-          className="fixed top-0 left-0 right-0 bottom-0 min-h-[100vh] min-w-[100vw] z-50 flex items-center justify-center p-4 overflow-hidden"
+          className="fixed top-0 left-0 right-0 bottom-0 min-h-[100vh] min-w-[100vw] z-40 flex items-center justify-center p-4 overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="chat-title"

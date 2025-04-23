@@ -35,14 +35,14 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && !isOpen) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, []);
 
   // Prevent body scrolling when menu is open on mobile
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
   };
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-[9000] inline-block transform-gpu" style={{ transform: 'translateZ(0)' }} ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-3 focus:outline-none group"
@@ -88,10 +88,10 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
         />
       </button>
 
-      {/* Desktop dropdown menu (only for desktop) */}
-      {!isMobile && (
-        <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-gradient-to-br from-purple-900/95 to-blue-900/95 backdrop-blur-lg border border-white/10 overflow-hidden z-50 transition-all duration-200 origin-top-right ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-          <div className="px-4 py-3 border-b border-white/10">
+      {/* Desktop dropdown menu */}
+      {!isMobile && isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-xl shadow-xl bg-gradient-to-br from-purple-800 to-blue-900 backdrop-blur-lg border border-white/20 overflow-hidden z-[9001] ring-4 ring-purple-500/10" style={{ transform: 'translateZ(0)' }}>
+          <div className="px-4 py-3 border-b border-white/20">
             <p className="text-sm font-medium text-white">{userName}</p>
           </div>
 
@@ -100,7 +100,7 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
               <Link
                 key={item.href}
                 href={item.href}
-                className="block px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors transform hover:translate-x-1 duration-200"
+                className="block px-4 py-2 text-sm text-white hover:bg-white/20 transition-colors transform hover:translate-x-1 duration-200"
                 onClick={handleLinkClick}
                 style={{ transitionDelay: `${index * 50}ms` }}
               >
@@ -109,10 +109,10 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
             ))}
           </div>
 
-          <div className="border-t border-white/10 py-1">
+          <div className="border-t border-white/20 py-1">
             <button
               onClick={handleSignOut}
-              className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-all duration-200 hover:translate-x-1"
+              className="block w-full text-left px-4 py-2 text-sm text-red-300 hover:bg-white/20 transition-all duration-200 hover:translate-x-1"
             >
               Sign out
             </button>
@@ -123,9 +123,9 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
       {/* Mobile menu using Headless UI (only for mobile) */}
       {isMobile && (
         <Transition show={isOpen} as={Fragment}>
-          <Dialog as="div" className="relative z-[60]" onClose={setIsOpen}>
+          <Dialog as="div" className="relative z-[9001]" onClose={setIsOpen}>
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -139,7 +139,7 @@ export default function ProfileMenu({ userName, userImage, isWhiteHeader = false
             <div className="fixed inset-0 overflow-y-auto">
               <div className="flex min-h-full items-center justify-center text-center">
                 <Transition.Child
-                  as={Fragment}
+                  as="div"
                   enter="ease-out duration-300"
                   enterFrom="opacity-0 scale-95"
                   enterTo="opacity-100 scale-100"

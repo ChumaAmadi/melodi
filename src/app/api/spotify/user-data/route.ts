@@ -7,11 +7,24 @@ import { serverFunctions } from '@/lib/spotify';
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
+// Add CORS headers to the response
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return corsHeaders(new NextResponse(null, { status: 200 }));
+}
+
 export async function GET() {
   const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return corsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   }
 
   try {
@@ -20,7 +33,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return corsHeaders(NextResponse.json({ error: 'User not found' }, { status: 404 }));
     }
 
     const [topTracks, recentlyPlayed, stats] = await Promise.all([
@@ -29,13 +42,13 @@ export async function GET() {
       serverFunctions.getListeningStats(user.id)
     ]);
 
-    return NextResponse.json({
+    return corsHeaders(NextResponse.json({
       topTracks,
       recentlyPlayed,
       stats
-    });
+    }));
   } catch (error) {
     console.error('Error fetching user data:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return corsHeaders(NextResponse.json({ error: 'Internal server error' }, { status: 500 }));
   }
 } 

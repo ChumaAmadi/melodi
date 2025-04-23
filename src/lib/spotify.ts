@@ -56,7 +56,10 @@ async function saveTrackToHistory(track: any, userId: string, playedAt?: string)
       playedAt
     });
 
-    const response = await fetch('/api/spotify/save-track', {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const url = new URL('/api/spotify/save-track', baseUrl);
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -132,7 +135,10 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
     // Fetch play counts from server API
     let playCountMap = new Map();
     try {
-      const countResponse = await fetch('/api/spotify/track-counts', {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const countUrl = new URL('/api/spotify/track-counts', baseUrl);
+      
+      const countResponse = await fetch(countUrl.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,7 +391,10 @@ export function processRecentlyPlayed(tracks: any[]) {
 
 export async function fetchUserData() {
   try {
-    const response = await fetch('/api/spotify/user-data');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const url = new URL('/api/spotify/user-data', baseUrl);
+    
+    const response = await fetch(url.toString());
     if (!response.ok) {
       throw new Error('Failed to fetch user data');
     }

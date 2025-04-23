@@ -25,7 +25,7 @@ export default function InsightHeader({
 
   return (
     <div 
-      className={`w-full transition-all duration-500 ease-in-out mb-6 ${
+      className={`w-full transition-all duration-500 ease-in-out mb-6 relative z-[1] ${
         isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'
       }`}
     >

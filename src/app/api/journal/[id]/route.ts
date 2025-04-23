@@ -43,11 +43,47 @@ export async function DELETE(
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // ... existing code ...
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Get the journal entry
+    const entry = await prisma.journalEntry.findUnique({
+      where: {
+        id: params.id,
+      },
+    });
+
+    if (!entry) {
+      return NextResponse.json({ error: "Journal entry not found" }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (entry.userId !== user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return NextResponse.json(entry);
+  } catch (error) {
+    console.error("Error fetching journal entry:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch journal entry" },
+      { status: 500 }
+    );
+  }
 } 

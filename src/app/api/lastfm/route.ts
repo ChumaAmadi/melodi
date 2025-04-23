@@ -3,16 +3,29 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+// Add CORS headers to the response
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return corsHeaders(new NextResponse(null, { status: 200 }));
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get Last.fm API key from environment variable
     const apiKey = process.env.LASTFM_API_KEY;
     
     if (!apiKey) {
-      return NextResponse.json(
+      return corsHeaders(NextResponse.json(
         { error: 'Last.fm API key not configured' },
         { status: 500 }
-      );
+      ));
     }
     
     // Get params from URL
@@ -21,10 +34,10 @@ export async function GET(request: NextRequest) {
     const track = request.nextUrl.searchParams.get('track');
     
     if (!method) {
-      return NextResponse.json(
+      return corsHeaders(NextResponse.json(
         { error: 'Missing required parameter: method' },
         { status: 400 }
-      );
+      ));
     }
     
     // Build Last.fm API URL
@@ -55,10 +68,10 @@ export async function GET(request: NextRequest) {
     
     if (!response.ok) {
       console.error(`Last.fm API error: ${response.status} ${response.statusText}`);
-      return NextResponse.json(
+      return corsHeaders(NextResponse.json(
         { error: `Last.fm API error: ${response.status}` },
         { status: response.status }
-      );
+      ));
     }
     
     const data = await response.json();
@@ -66,18 +79,18 @@ export async function GET(request: NextRequest) {
     // Check for Last.fm API error
     if (data.error) {
       console.error(`Last.fm API error: ${data.error} - ${data.message}`);
-      return NextResponse.json(
+      return corsHeaders(NextResponse.json(
         { error: data.message || `Last.fm API error: ${data.error}` },
         { status: 400 }
-      );
+      ));
     }
     
-    return NextResponse.json(data);
+    return corsHeaders(NextResponse.json(data));
   } catch (error) {
     console.error('Error proxying Last.fm request:', error);
-    return NextResponse.json(
+    return corsHeaders(NextResponse.json(
       { error: 'Failed to proxy Last.fm request' },
       { status: 500 }
-    );
+    ));
   }
 } 

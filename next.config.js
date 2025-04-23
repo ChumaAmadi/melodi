@@ -25,7 +25,7 @@ const nextConfig = {
         hostname: 'wrapped-images.spotifycdn.com',
       },
     ],
-    domains: ['i.scdn.co'],
+    domains: ['i.scdn.co', 'mosaic.scdn.co', 'platform-lookaside.fbsbx.com', 'i.discogs.com'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -40,6 +40,11 @@ const nextConfig = {
       };
     }
     return config;
+  },
+  env: {
+    NEXT_PUBLIC_BASE_URL: process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000',
   },
 };
 

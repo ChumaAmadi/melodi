@@ -26,8 +26,9 @@ interface LastFMTag {
 export async function makeLastfmRequest(method: string, params: Record<string, string> = {}) {
   await lastfmLimiter.removeTokens(1);
   
-  // Build URL for our server-side API endpoint
-  const url = new URL('/api/lastfm', window.location.origin);
+  // Build URL for our server-side API endpoint - without using window
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const url = new URL('/api/lastfm', baseUrl);
   url.searchParams.append('method', method);
   
   // Add all params to the URL

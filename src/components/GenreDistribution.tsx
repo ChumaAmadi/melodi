@@ -561,6 +561,16 @@ export default function GenreDistribution({
 
   // Create component for the radar chart with ref
   const renderRadarChart = () => {
+    // For server-side rendering, show a loading placeholder
+    if (!isClient) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[80%] rounded-lg bg-purple p-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-400 mb-3"></div>
+          <p className="text-white/70 text-center">Loading mood data...</p>
+        </div>
+      );
+    }
+    
     if (isLoadingMoodData) {
       return (
         <div className="flex flex-col items-center justify-center h-[80%] rounded-lg bg-purple p-4">
@@ -606,6 +616,11 @@ export default function GenreDistribution({
 
   // Prepare radar chart data - updated to use either genre-specific or general mood data
   const prepareRadarData = () => {
+    // Skip data preparation during server-side rendering
+    if (!isClient) {
+      return null;
+    }
+    
     // Use genre-specific mood data if available, otherwise fall back to general mood data
     const dataToUse = selectedGenre && genreMoodData ? genreMoodData : moodData;
     
@@ -615,7 +630,7 @@ export default function GenreDistribution({
         labels: ['Happy', 'Calm', 'Sad', 'Frustrated', 'Reflective', 'Inspired'],
         datasets: [
           {
-            label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} (${dateRange})`,
+            label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} ${dateRange}`,
             data: [0, 0, 0, 0, 0, 0],
             backgroundColor: '#a855f7aa', // Explicit purple with high opacity
             borderColor: '#a855f7',
@@ -641,7 +656,7 @@ export default function GenreDistribution({
           labels: ['Happy', 'Calm', 'Sad', 'Frustrated', 'Reflective', 'Inspired'],
           datasets: [
             {
-              label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} (${dateRange})`,
+              label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} ${dateRange}`,
               data: [0, 0, 0, 0, 0, 0],
               backgroundColor: '#a855f7aa', // Explicit purple with high opacity
               borderColor: '#a855f7',
@@ -674,7 +689,7 @@ export default function GenreDistribution({
         labels: moodLabels,
         datasets: [
           {
-            label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} (${dateRange})`,
+            label: `Mood Analysis ${selectedGenre ? `for ${selectedGenre}` : ''} ${dateRange}`,
             data: moodValues,
             backgroundColor: chartBgColor,
             borderColor: chartColor,
@@ -778,8 +793,8 @@ export default function GenreDistribution({
   };
 
   // Create chart data
-  const doughnutData = prepareDonutData();
-  const radarData = prepareRadarData();
+  const doughnutData = isClient ? prepareDonutData() : null;
+  const radarData = isClient ? prepareRadarData() : null;
   
   // Update the doughnut options to show correct percentages
   const doughnutOptions = {
@@ -825,7 +840,7 @@ export default function GenreDistribution({
         labels: {
           color: 'rgba(255, 255, 255, 0.8)',
           font: {
-            size: 12
+            size: 11
           }
         }
       },
@@ -920,6 +935,8 @@ export default function GenreDistribution({
   CustomDatePickerInput.displayName = 'CustomDatePickerInput';
 
   const formatMoodTitle = () => {
+    // Format date range to be more compact but keep the year
+    // Original format example: "Apr 16 - Apr 22, 2025" remains unchanged
     return `Mood Analysis ${selectedGenre ? `for ${capitalizeFirstLetter(selectedGenre)}` : ''} ${dateRange}`;
   };
 
@@ -961,7 +978,7 @@ export default function GenreDistribution({
               <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-400 mb-3"></div>
               <p className="text-white/70">Updating your genre data...</p>
             </div>
-          ) : hasValidGenreData ? (
+          ) : hasValidGenreData && isClient && doughnutData ? (
             <div className="relative">
               <Doughnut 
                 data={doughnutData} 
@@ -977,7 +994,7 @@ export default function GenreDistribution({
           )}
       </div>
       <div className="aspect-square">
-          <h4 className="text-md font-medium text-white/80 mb-3">{formatMoodTitle()}</h4>
+          <h4 className="text-sm font-medium text-white/80 mb-3 whitespace-nowrap">{formatMoodTitle()}</h4>
           {renderRadarChart()}
         </div>
       </div>

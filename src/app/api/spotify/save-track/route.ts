@@ -1,19 +1,32 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(request: Request) {
+// Add CORS headers to the response
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  return response;
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return corsHeaders(new NextResponse(null, { status: 200 }));
+}
+
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { track, userId, playedAt } = body;
 
     if (!track?.name || !track?.artist) {
       console.error('Invalid track data:', track);
-      return NextResponse.json(
+      return corsHeaders(NextResponse.json(
         { error: 'Invalid track data' },
         { status: 400 }
-      );
+      ));
     }
 
     // Ensure genre is set
@@ -37,12 +50,12 @@ export async function POST(request: Request) {
     });
 
     if (existingTrack) {
-      return NextResponse.json({
+      return corsHeaders(NextResponse.json({
         trackName: existingTrack.trackName,
         artistName: existingTrack.artistName,
         genre: existingTrack.genre,
         subGenres: existingTrack.subGenres
-      });
+      }));
     }
 
     const savedTrack = await prisma.listeningHistory.create({
@@ -60,17 +73,17 @@ export async function POST(request: Request) {
     });
 
     // Return a clean response with just the needed fields
-    return NextResponse.json({
+    return corsHeaders(NextResponse.json({
       trackName: savedTrack.trackName,
       artistName: savedTrack.artistName,
       genre: savedTrack.genre,
       subGenres: savedTrack.subGenres
-    });
+    }));
   } catch (error) {
     console.error('Error saving track:', error);
-    return NextResponse.json(
+    return corsHeaders(NextResponse.json(
       { error: 'Failed to save track', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
-    );
+    ));
   }
 } 

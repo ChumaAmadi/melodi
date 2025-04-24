@@ -6,6 +6,9 @@ import JournalSection from "@/components/JournalSection";
 import Image from "next/image";
 import Link from "next/link";
 import ProfileMenu from "@/components/ProfileMenu";
+import MobileProfileMenu from "@/components/MobileProfileMenu";
+import { useState, useEffect, useRef } from "react";
+import useSpotifyProfile from "@/hooks/useSpotifyProfile";
 
 export default function JournalPage() {
   const { data: session, status } = useSession({
@@ -14,6 +17,33 @@ export default function JournalPage() {
       redirect("/auth/signin");
     },
   });
+  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  
+  // Use the Spotify profile hook
+  const { 
+    spotifyProfileImage, 
+    isLoadingProfileImage, 
+    profileImageError 
+  } = useSpotifyProfile();
+  
+  // Check if on mobile device
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIsMobile();
+    
+    // Add event listener for resize
+    window.addEventListener('resize', checkIsMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   if (status === "loading") {
     return (
@@ -81,13 +111,56 @@ export default function JournalPage() {
             />
           </Link>
         </div>
-        {session?.user?.image && (
+        
+        {/* Only show the ProfileMenu on desktop */}
+        {!isMobile && session?.user?.image && (
           <ProfileMenu
             userName={session.user.name || ''}
             userImage={session.user.image}
           />
         )}
+        
+        {/* Show mobile menu button on mobile */}
+        {isMobile && session?.user?.name && (
+          <button 
+            ref={mobileMenuButtonRef}
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="relative z-[1001] flex items-center"
+          >
+            {isLoadingProfileImage ? (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 animate-pulse flex items-center justify-center">
+                <span className="text-white font-medium">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            ) : spotifyProfileImage ? (
+              <img
+                src={spotifyProfileImage}
+                alt={session.user.name}
+                className="w-10 h-10 rounded-full border-2 border-white/10"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-medium">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+          </button>
+        )}
       </header>
+
+      {/* Mobile Profile Menu */}
+      {isMobile && (
+        <MobileProfileMenu
+          isOpen={isMobileMenuOpen}
+          setIsOpen={setIsMobileMenuOpen}
+          userName={session?.user?.name || ''}
+          profileImage={spotifyProfileImage}
+          isLoadingProfileImage={isLoadingProfileImage}
+        />
+      )}
+      
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 relative z-10">
         <JournalSection />
       </div>

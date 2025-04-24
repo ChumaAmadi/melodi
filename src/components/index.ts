@@ -9,4 +9,5 @@ export { default as MelodiChat } from './MelodiChat';
 export { LoadingSpinner } from './LoadingSpinner';
 export { default as MoodTimeline } from './MoodTimeline';
 export { default as Dashboard } from './Dashboard';
-export { default as ProfileMenu } from './ProfileMenu'; 
+export { default as ProfileMenu } from './ProfileMenu';
+export { default as MobileProfileMenu } from './MobileProfileMenu'; 

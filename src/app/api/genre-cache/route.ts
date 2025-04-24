@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/auth.config';
-import { prisma } from '@/lib/prisma';
+import { getArtistGenres, setArtistGenres } from '@/lib/cache/genreCache';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -29,13 +29,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const genreCache = await prisma.artistGenreCache.findFirst({
-      where: {
-        artistId: decodeURIComponent(artist),
-      },
-    });
-
-    return corsHeaders(NextResponse.json(genreCache || { genres: [] }));
+    const genres = await getArtistGenres(decodeURIComponent(artist));
+    
+    return corsHeaders(NextResponse.json({ genres }));
   } catch (error) {
     console.error("Error fetching from genre cache:", error);
     return corsHeaders(
@@ -62,24 +58,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert the genre cache entry
-    const result = await prisma.artistGenreCache.upsert({
-      where: {
-        artistId: artistName,
-      },
-      update: {
-        mainGenres: genres,
-        lastUpdated: new Date(),
-      },
-      create: {
-        artistId: artistName,
-        mainGenres: genres,
-        subGenres: [],
-        lastUpdated: new Date(),
-      },
-    });
+    // Update the genre cache
+    await setArtistGenres(artistName, genres);
 
-    return corsHeaders(NextResponse.json(result));
+    return corsHeaders(NextResponse.json({ success: true }));
   } catch (error) {
     console.error("Error updating genre cache:", error);
     return corsHeaders(

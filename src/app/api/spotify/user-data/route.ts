@@ -20,7 +20,7 @@ export async function OPTIONS() {
   return corsHeaders(new NextResponse(null, { status: 200 }));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authConfig);
   
   if (!session?.user?.email) {
@@ -36,16 +36,41 @@ export async function GET() {
       return corsHeaders(NextResponse.json({ error: 'User not found' }, { status: 404 }));
     }
 
-    const [topTracks, recentlyPlayed, stats] = await Promise.all([
+    // Get time period from URL query parameter
+    const url = new URL(request.url);
+    const timePeriod = url.searchParams.get('period') as 'day' | 'week' | 'month' | 'year' | 'all' || 'all';
+    
+    // Log the time period being used
+    console.log(`Received request for user data with time period: ${timePeriod}`);
+
+    // Get Spotify user profile with image
+    const spotifyProfile = await serverFunctions.getUserProfile(session);
+
+    // Process all requests in parallel
+    const [topTracks, recentlyPlayed, stats, topArtist] = await Promise.all([
       serverFunctions.getTopTracks(session),
       serverFunctions.getRecentlyPlayed(session),
-      serverFunctions.getListeningStats(user.id)
+      serverFunctions.getListeningStats(user.id, timePeriod),
+      serverFunctions.getTopArtists(session, 1).then(artists => artists && artists.length > 0 ? artists[0] : null)
     ]);
 
+    // Log the stats we're returning
+    console.log(`Returning stats for period ${timePeriod}:`, {
+      totalTracks: stats?.totalTracks || 0,
+      totalHours: stats?.totalHours || 0,
+      topGenre: stats?.topGenre || ''
+    });
+
     return corsHeaders(NextResponse.json({
+      user: spotifyProfile,
       topTracks,
       recentlyPlayed,
-      stats
+      stats: {
+        ...stats,
+        // Ensure we always return the requested period
+        timePeriod
+      },
+      topArtist
     }));
   } catch (error) {
     console.error('Error fetching user data:', error);

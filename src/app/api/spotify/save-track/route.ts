@@ -32,12 +32,16 @@ export async function POST(request: NextRequest) {
     // Ensure genre is set
     const genre = track.genre || 'other';
     const subGenres = Array.isArray(track.subGenres) ? track.subGenres : [];
+    
+    // Use track duration if available, default to an average of 3.5 minutes (210 seconds)
+    const duration = track.duration || track.duration_ms ? Math.floor(track.duration_ms / 1000) : 210;
 
     console.log('Saving track with data:', {
       trackName: track.name,
       artistName: track.artist,
       genre,
-      subGenres
+      subGenres,
+      duration
     });
 
     // Check if track already exists for this time
@@ -66,7 +70,7 @@ export async function POST(request: NextRequest) {
         artistName: track.artist,
         albumName: track.album || 'Unknown Album',
         playedAt: playedAt ? new Date(playedAt) : new Date(),
-        duration: 0,
+        duration: duration,
         genre,
         subGenres,
       },

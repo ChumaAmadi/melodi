@@ -143,7 +143,8 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ trackIds })
+        body: JSON.stringify({ trackIds }),
+        credentials: 'include'
       });
       
       if (countResponse.ok) {
@@ -155,6 +156,8 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
           });
         }
         console.log('Play count map created with', playCountMap.size, 'entries');
+      } else {
+        console.error('Error fetching play counts:', countResponse.status, countResponse.statusText);
       }
     } catch (countError) {
       console.error('Error fetching play counts:', countError);
@@ -190,6 +193,7 @@ export async function getTopTracks(session: Session | null, timeRange: 'short_te
           playCount: playCountMap.get(track.id) || 1, // Default to 1 instead of 0 for better UX
           genre: mainGenres[0] || 'other',
           subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
+          duration_ms: track.duration_ms || 210000 // Default to 3.5 minutes (210 seconds) if duration not available
         };
 
         try {
@@ -261,6 +265,7 @@ export async function getRecentlyPlayed(session: Session | null) {
           playedAt: item.played_at,
           genre: mainGenres[0] || 'other',
           subGenres: [...new Set([...mainGenres.slice(1), ...subGenres])], // Remove duplicates
+          duration_ms: item.track.duration_ms || 210000 // Default to 3.5 minutes if not available
         };
 
         // Save to listening history with enhanced genre information
@@ -408,15 +413,226 @@ export async function fetchUserData() {
 export const serverFunctions = {
   getTopTracks,
   getRecentlyPlayed,
-  getListeningStats: async (userId: string) => {
-    const stats = await prisma.listeningHistory.groupBy({
-      by: ['genre'],
-      where: { userId },
-      _count: true,
-    });
-    return stats.map(stat => ({
-      genre: stat.genre,
-      count: stat._count,
-    }));
+  getUserProfile,
+  getTopArtists,
+  getListeningStats: async (userId: string, timePeriod?: 'day' | 'week' | 'month' | 'year' | 'all') => {
+    try {
+      // Default to all-time if not specified
+      timePeriod = timePeriod || 'all';
+      
+      // Calculate date ranges based on time period
+      let dateFilter: any = {};
+      const now = new Date();
+      let startDate: Date = new Date(0); // Default to beginning of time
+
+      if (timePeriod !== 'all') {
+        switch (timePeriod) {
+          case 'day':
+            startDate = new Date(now);
+            startDate.setHours(0, 0, 0, 0); // Start of today
+            break;
+          case 'week':
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 7);
+            break;
+          case 'month':
+            startDate = new Date(now);
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+          case 'year':
+            startDate = new Date(now);
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          default:
+            startDate = new Date(0); // Beginning of time
+        }
+        
+        dateFilter = {
+          createdAt: {
+            gte: startDate
+          }
+        };
+      }
+      
+      // Format date for debugging
+      const startDateStr = startDate.toISOString();
+      console.log(`Calculating ${timePeriod} listening stats for user ${userId} since ${startDateStr}`);
+
+      try {
+        // DEBUGGING: Execute a count query first to verify filtering is working
+        const countResult = await prisma.listeningHistory.count({
+          where: {
+            userId,
+            ...(timePeriod !== 'all' ? { createdAt: { gte: startDate } } : {})
+          }
+        });
+        
+        console.log(`Found ${countResult} records for time period ${timePeriod}`);
+        
+        // Direct query using parameterized query with explicit date format
+        // Postgres requires ISO format dates in queries
+        let query = `
+          SELECT COALESCE(SUM(duration), 0) as totalduration, COUNT(*) as totalcount
+          FROM "ListeningHistory"
+          WHERE "userId" = $1
+        `;
+
+        // Add date filter if needed with explicit date formatting
+        let queryParams: any[] = [userId];
+        if (timePeriod !== 'all') {
+          query += ` AND "createdAt" >= $2::timestamp`;
+          queryParams.push(startDateStr);
+          console.log(`Filtering by date >= ${startDateStr} (Params: ${queryParams.join(', ')})`);
+        }
+
+        const durationSumResult = await prisma.$queryRawUnsafe(query, ...queryParams);
+        
+        console.log("Duration query result:", JSON.stringify(durationSumResult, null, 2));
+        
+        const totalDuration = Number(durationSumResult[0]?.totalduration || 0);
+        const totalTracksFromRaw = Number(durationSumResult[0]?.totalcount || 0);
+        
+        // Calculate total listening time in minutes, then convert to hours
+        // Assuming duration is stored in seconds in the database
+        const totalMinutes = Math.round(totalDuration / 60);
+        const totalHours = Math.round(totalMinutes / 60 * 10) / 10;  // Round to 1 decimal place
+        
+        // Get most played genre for the time period
+        const genreCounts = await prisma.listeningHistory.groupBy({
+          by: ['genre'],
+          where: { 
+            userId,
+            ...(timePeriod !== 'all' ? { createdAt: { gte: startDate } } : {})
+          },
+          _count: { id: true },
+          orderBy: {
+            _count: { id: 'desc' }
+          },
+          take: 1
+        });
+        
+        const topGenre = genreCounts[0]?.genre || '';
+        
+        console.log(`${timePeriod} stats calculated:`, { 
+          totalTracks: totalTracksFromRaw, 
+          totalMinutes, 
+          totalHours, 
+          totalDuration,
+          topGenre,
+          timeFilterApplied: timePeriod !== 'all'
+        });
+        
+        return {
+          totalTracks: totalTracksFromRaw,
+          totalMinutes,
+          totalHours,
+          topGenre,
+          timePeriod
+        };
+      } catch (error) {
+        console.error(`Error in SQL query:`, error);
+        return {
+          totalTracks: 0,
+          totalMinutes: 0,
+          totalHours: 0,
+          topGenre: '',
+          timePeriod: timePeriod || 'all'
+        };
+      }
+    } catch (error) {
+      console.error(`Error calculating ${timePeriod || 'all-time'} listening stats:`, error);
+      return {
+        totalTracks: 0,
+        totalMinutes: 0,
+        totalHours: 0,
+        topGenre: '',
+        timePeriod: timePeriod || 'all'
+      };
+    }
   }
-}; 
+};
+
+// Get the user's Spotify profile 
+export async function getUserProfile(session: Session | null) {
+  if (!session?.user) {
+    console.error('No session user found');
+    return null;
+  }
+  if (!session.accessToken) {
+    console.error('No access token found in session');
+    return null;
+  }
+
+  try {
+    console.log('Fetching Spotify user profile...');
+    const response = await fetch(`${BASE_URL}/me`, {
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Failed to fetch user profile:', error);
+      throw new Error(`Failed to fetch user profile: ${error.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Spotify user profile fetched successfully with image URLs:', data.images?.length || 0);
+    
+    return {
+      id: data.id,
+      name: data.display_name,
+      email: data.email,
+      images: data.images || [],
+      country: data.country,
+      profileUrl: data.external_urls?.spotify,
+      followers: data.followers?.total || 0
+    };
+  } catch (error) {
+    console.error('Error in getUserProfile:', error);
+    return null;
+  }
+}
+
+// Get user's top artists
+export async function getTopArtists(session: Session | null, limit: number = 5, timeRange: 'short_term' | 'medium_term' | 'long_term' = 'short_term') {
+  if (!session?.user) {
+    console.error('No session user found');
+    return null;
+  }
+  if (!session.accessToken) {
+    console.error('No access token found in session');
+    return null;
+  }
+
+  try {
+    console.log('Fetching top artists...');
+    const response = await fetch(`${BASE_URL}/me/top/artists?limit=${limit}&time_range=${timeRange}`, {
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Failed to fetch top artists:', error);
+      throw new Error(`Failed to fetch top artists: ${error.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Top artists fetched:', data.items.length);
+
+    return data.items.map((artist: any) => ({
+      id: artist.id,
+      name: artist.name,
+      images: artist.images || [],
+      genres: artist.genres || [],
+      popularity: artist.popularity,
+      uri: artist.uri
+    }));
+  } catch (error) {
+    console.error('Error in getTopArtists:', error);
+    return null;
+  }
+} 

@@ -297,7 +297,7 @@ export default function SignIn() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                melodi
+                Melodi
               </motion.h1>
             </motion.div>
             <div className="h-[72px] flex items-center justify-center lg:justify-start overflow-hidden relative">
@@ -361,6 +361,8 @@ export default function SignIn() {
                     width={20}
                     height={20}
                     className="w-full h-full object-contain"
+                    priority
+                    unoptimized
                     draggable={false}
                   />
                 </div>

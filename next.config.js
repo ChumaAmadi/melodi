@@ -24,8 +24,27 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'wrapped-images.spotifycdn.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'scontent-lhr6-1.xx.fbcdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'scontent-lhr6-2.xx.fbcdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.xx.fbcdn.net',
+      },
     ],
-    domains: ['i.scdn.co', 'mosaic.scdn.co', 'platform-lookaside.fbsbx.com', 'i.discogs.com'],
+    domains: [
+      'i.scdn.co', 
+      'mosaic.scdn.co', 
+      'platform-lookaside.fbsbx.com', 
+      'i.discogs.com',
+      'scontent-lhr6-1.xx.fbcdn.net',
+      'scontent-lhr6-2.xx.fbcdn.net'
+    ],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

@@ -10,11 +10,13 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import MelodiChat from './MelodiChat';
 import GenreDistribution from './GenreDistribution';
 import ProfileMenu from './ProfileMenu';
+import MobileProfileMenu from './MobileProfileMenu';
 import InsightHeader from './InsightHeader';
 import { TopPlaylist } from '@/lib/spotify';
 import { MusicalNoteIcon } from '@heroicons/react/24/outline';
 import { Doughnut } from "react-chartjs-2";
 import { generateHeaderInsight } from "@/lib/deepseek";
+import useSpotifyProfile from "@/hooks/useSpotifyProfile";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -92,7 +94,17 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
   const [genreError, setGenreError] = useState<string | null>(null);
   const [insight, setInsight] = useState<string>('Discover insights from your music journey...');
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  
+  // Use the Spotify profile hook
+  const { 
+    spotifyProfileImage, 
+    isLoadingProfileImage, 
+    profileImageError 
+  } = useSpotifyProfile();
   
   // Get first name from full name
   const firstName = session?.user?.name?.split(' ')[0] || '';
@@ -354,6 +366,22 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
     }
   };
 
+  // Implement mobile check
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIsMobile();
+    
+    // Add event listener for resize
+    window.addEventListener('resize', checkIsMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
   if (!session) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 flex flex-col items-center justify-center">
@@ -475,14 +503,56 @@ export default function Dashboard({ listeningHistory = [] }: DashboardProps) {
             />
           </Link>
         </div>
-        {session?.user?.image && (
+        
+        {/* Only show the ProfileMenu on desktop */}
+        {!isMobile && session?.user?.image && (
           <ProfileMenu
             userName={session.user.name || ''}
             userImage={session.user.image}
             isWhiteHeader={false}
           />
         )}
+        
+        {/* Show mobile menu button on mobile */}
+        {isMobile && session?.user?.name && (
+          <button 
+            ref={mobileMenuButtonRef}
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="relative z-[2001] flex items-center"
+          >
+            {isLoadingProfileImage ? (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 animate-pulse flex items-center justify-center">
+                <span className="text-white font-medium">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            ) : spotifyProfileImage ? (
+              <img
+                src={spotifyProfileImage}
+                alt={session.user.name}
+                className="w-10 h-10 rounded-full border-2 border-white/10"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-medium">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+          </button>
+        )}
       </header>
+
+      {/* Mobile Profile Menu */}
+      {isMobile && (
+        <MobileProfileMenu
+          isOpen={isMobileMenuOpen}
+          setIsOpen={setIsMobileMenuOpen}
+          userName={session?.user?.name || ''}
+          profileImage={spotifyProfileImage}
+          isLoadingProfileImage={isLoadingProfileImage}
+        />
+      )}
 
       <main className="container mx-auto px-6 py-8 space-y-8 relative z-10">
         {/* Insight Header */}

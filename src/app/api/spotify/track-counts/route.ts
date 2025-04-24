@@ -11,6 +11,7 @@ function corsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*');
   response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
   return response;
 }
 
@@ -24,16 +25,28 @@ export async function POST(request: NextRequest) {
     // Get the session to verify user is authenticated
     const session = await getServerSession(authConfig);
     
-    if (!session?.user?.email) {
+    if (!session?.user) {
+      console.error("Unauthorized access attempt to track-counts API:", { 
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        requestHeaders: Object.fromEntries(request.headers)
+      });
+      
       return corsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
     }
 
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    // Find user either by email or id
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: session.user.email || '' },
+          { id: session.user.id || '' }
+        ]
+      },
     });
 
     if (!user) {
+      console.error("User not found in database:", { sessionUser: session.user });
       return corsHeaders(NextResponse.json({ error: "User not found" }, { status: 404 }));
     }
 
@@ -45,7 +58,7 @@ export async function POST(request: NextRequest) {
       return corsHeaders(NextResponse.json([]));
     }
 
-    console.log(`Fetching play counts for ${trackIds.length} tracks`);
+    console.log(`Fetching play counts for ${trackIds.length} tracks for user ${user.id}`);
 
     // Query the database for play counts
     const trackCounts = await prisma.listeningHistory.groupBy({

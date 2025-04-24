@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/auth.config';
-import { prisma } from '@/lib/prisma';
 import { detectArtistGenres } from '@/lib/genre-detection';
 
 // Force dynamic rendering for this route

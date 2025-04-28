@@ -249,8 +249,7 @@ export default function ProfilePage() {
     // Helper function to determine if there is actual listening activity
     const hasListeningActivity = () => {
       if (!stats) return false;
-      return (stats.displayPlays && Number(stats.displayPlays) > 0) || 
-             (stats.displayHours && Number(stats.displayHours) > 0);
+      return (stats.totalListens > 0) || (stats.listeningTime > 0);
     };
     
     console.log("ListeningStats rendered with:", { 
@@ -259,6 +258,11 @@ export default function ProfilePage() {
       stats,
       hasActivity: hasListeningActivity()
     });
+    
+    // Format numbers for display
+    const formatDisplayNumber = (num: number): string => {
+      return num.toLocaleString();
+    };
     
     return (
       <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden shadow-xl">
@@ -308,7 +312,7 @@ export default function ProfilePage() {
                   <MusicalNoteIcon className="w-6 h-6 text-white" />
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">
-                  {stats?.displayPlays || "0"}
+                  {stats ? formatDisplayNumber(stats.totalListens) : "0"}
                 </p>
                 <span className="text-purple-300 text-sm">Total Plays</span>
               </div>
@@ -318,7 +322,7 @@ export default function ProfilePage() {
                   <ChartBarIcon className="w-6 h-6 text-white" />
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">
-                  {stats?.journalEntries.toString() || "0"}
+                  {stats ? formatDisplayNumber(stats.journalEntries) : "0"}
                 </p>
                 <span className="text-purple-300 text-sm">Journal Entries</span>
               </div>
@@ -328,7 +332,7 @@ export default function ProfilePage() {
                   <ClockIcon className="w-6 h-6 text-white" />
                 </div>
                 <p className="text-3xl font-bold text-white mb-1">
-                  {stats?.displayHours || "0"}
+                  {stats ? formatDisplayNumber(stats.listeningTime) : "0"}
                 </p>
                 <span className="text-purple-300 text-sm">{stats?.listeningTime === 1 ? 'Hour' : 'Hours'} Listened</span>
               </div>
@@ -491,11 +495,11 @@ export default function ProfilePage() {
     setIsLoadingMoodData(true);
     
     try {
-      // Fetch mood summaries
-      await fetchMoodSummaries();
-      
       // Fetch user statistics with the current period
       await fetchUserStats(timePeriod);
+      
+      // Fetch mood summaries - less critical, can happen after stats are loaded
+      await fetchMoodSummaries();
       
       console.log("Successfully loaded initial user data");
     } catch (error) {
@@ -514,9 +518,14 @@ export default function ProfilePage() {
       attempts++;
       
       try {
-        const response = await fetch(`${baseUrl}/api/mood-analysis`, {
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${baseUrl}/api/mood-analysis?t=${timestamp}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache'
+          }
         });
         
         if (response.ok) {
@@ -575,14 +584,19 @@ export default function ProfilePage() {
     setIsLoadingMoodData(true);
     
     try {
-      // Static demo data for each time period
-      const demoData = {
-        day: { totalTracks: 10, totalHours: 0.5, genre: 'Pop' },
-        week: { totalTracks: 45, totalHours: 2.2, genre: 'Rock' },
-        month: { totalTracks: 120, totalHours: 6.0, genre: 'Indie' },
-        year: { totalTracks: 1250, totalHours: 62.5, genre: 'Alternative' },
-        all: { totalTracks: 3500, totalHours: 175.0, genre: 'Pop Rock' }
-      };
+      // Fetch real listening data from the API
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${baseUrl}/api/spotify/user-data?period=${specificPeriod}&t=${timestamp}`, {
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user stats: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Received stats for ${specificPeriod}:`, data.stats);
       
       // Get real join date if possible
       let joinDate = '';
@@ -592,7 +606,6 @@ export default function ProfilePage() {
         }
       } catch (error) {
         console.error("Error fetching join date:", error);
-        joinDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
       }
       
       // Get real journal entry count if possible
@@ -605,33 +618,30 @@ export default function ProfilePage() {
         console.error("Error fetching journal entries:", error);
       }
       
-      // Use the demo data for the current time period
-      const currentDemoData = demoData[specificPeriod];
-      
-      // Create the stats object with real join date and journal entries, demo listening data
+      // Create stats object from real API data
       const stats: UserStats = {
         joinedDate: joinDate,
-        totalListens: currentDemoData.totalTracks,
-        favoriteGenre: currentDemoData.genre,
+        totalListens: data.stats?.totalTracks || 0,
+        favoriteGenre: data.stats?.topGenre || '',
         topArtist: {
-          name: specificPeriod === 'all' ? 'Taylor Swift' : 'Demo Artist',
-          image: '/default-artist.jpg'
+          name: data.topArtist?.name || '',
+          image: data.topArtist?.images?.[0]?.url || '/default-artist.jpg'
         },
         journalEntries: journalEntries,
-        listeningTime: currentDemoData.totalHours,
+        listeningTime: data.stats?.totalHours || 0,
         timePeriod: specificPeriod,
-        hasData: true,
-        displayPlays: currentDemoData.totalTracks.toString(),
-        displayHours: currentDemoData.totalHours.toString()
+        hasData: (data.stats?.totalTracks || 0) > 0,
+        displayPlays: (data.stats?.totalTracks || 0).toString(),
+        displayHours: (data.stats?.totalHours || 0).toString()
       };
       
-      console.log(`Demo stats for ${specificPeriod}:`, stats);
+      console.log(`Real stats for ${specificPeriod}:`, stats);
       setUserStats(stats);
       return stats;
     } catch (error) {
       console.error(`Error in fetchUserStats for ${specificPeriod}:`, error);
       
-      // Even in case of error, return some basic stats
+      // Even in case of error, return empty stats
       const fallbackStats = {
         joinedDate: '',
         totalListens: 0,
@@ -643,7 +653,7 @@ export default function ProfilePage() {
         journalEntries: 0,
         listeningTime: 0,
         timePeriod: specificPeriod,
-        hasData: true, // Always show data for demo
+        hasData: false,
         displayPlays: '0',
         displayHours: '0'
       };
@@ -664,9 +674,13 @@ export default function ProfilePage() {
       attempts++;
       
       try {
-        const response = await fetch(`${baseUrl}/api/user/${userId}/joined-date`, {
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${baseUrl}/api/user/${userId}/joined-date?t=${timestamp}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Pragma': 'no-cache'
+          }
         });
         
         if (response.ok) {
@@ -698,9 +712,13 @@ export default function ProfilePage() {
       attempts++;
       
       try {
-        const response = await fetch(`${baseUrl}/api/journal/count?userId=${userId}`, {
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${baseUrl}/api/journal/count?userId=${userId}&t=${timestamp}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Pragma': 'no-cache'
+          }
         });
         
         if (response.ok) {
@@ -1062,7 +1080,7 @@ export default function ProfilePage() {
                       <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-xl p-6 flex-1 flex flex-col items-center justify-center text-center">
                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-400"></div>
                       </div>
-                    ) : userStats && userStats.topArtist.name ? (
+                    ) : userStats && userStats.topArtist && userStats.topArtist.name ? (
                       <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-xl p-6 flex-1 flex flex-col items-center justify-center text-center">
                         <div className="w-24 h-24 rounded-full mb-4 overflow-hidden relative">
                           {userStats.topArtist.image && !isFacebookImage(userStats.topArtist.image) ? (
@@ -1092,7 +1110,7 @@ export default function ProfilePage() {
                         <div className="px-4 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-sm text-purple-300 mb-4">
                           Most Listened
                         </div>
-                        <p className="text-purple-300 text-sm">You've been vibing to their music the most over the past month</p>
+                        <p className="text-purple-300 text-sm">Your most played artist in this time period</p>
                       </div>
                     ) : (
                       <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 rounded-xl p-6 flex-1 flex flex-col items-center justify-center text-center">
